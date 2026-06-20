@@ -1,26 +1,150 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-ink: #0a0a0b;
+  --color-ink-soft: #141416;
+  --color-ink-card: #18181b;
+  --color-ink-line: #2a2a2e;
+  --color-bone: #f3efe6;
+  --color-bone-dim: #b3ada1;
+  --color-ember: #e2342a;
+  --color-ember-dark: #9c1f1f;
+  --color-spark: #f0a830;
+  --color-steel: #7c8089;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-ink-card: var(--color-ink-card);
+  --color-ink-line: var(--color-ink-line);
+  --color-bone: var(--color-bone);
+  --color-bone-dim: var(--color-bone-dim);
+  --color-ember: var(--color-ember);
+  --color-ember-dark: var(--color-ember-dark);
+  --color-spark: var(--color-spark);
+  --color-steel: var(--color-steel);
+  --font-display: var(--font-stalinist);
+  --font-head: var(--font-oswald);
+  --font-body: var(--font-inter);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-ink);
+  color: var(--color-bone);
+  font-family: var(--font-body);
+  position: relative;
+}
+
+/* film-grain / noise overlay for the whole site */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 160px 160px;
+}
+
+::selection {
+  background: var(--color-ember);
+  color: var(--color-bone);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-ink);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-ink-line);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ember-dark);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+.font-head {
+  font-family: var(--font-head);
+}
+
+.text-stroke {
+  -webkit-text-stroke: 1px var(--color-ember);
+}
+
+.bg-grit {
+  background-image:
+    radial-gradient(ellipse at 20% 0%, rgba(226, 52, 42, 0.12), transparent 55%),
+    radial-gradient(ellipse at 85% 20%, rgba(240, 168, 48, 0.08), transparent 50%),
+    linear-gradient(180deg, #0a0a0b 0%, #0e0e10 100%);
+}
+
+.spark-line {
+  background: linear-gradient(90deg, transparent, var(--color-ember) 20%, var(--color-spark) 50%, var(--color-ember) 80%, transparent);
+  height: 2px;
+}
+
+.clip-jagged {
+  clip-path: polygon(
+    0% 4%, 2% 0%, 8% 2%, 14% 0%, 22% 3%, 30% 0%, 40% 2%, 50% 0%, 60% 2%, 70% 0%,
+    80% 3%, 90% 0%, 96% 2%, 100% 0%, 100% 96%, 97% 100%, 90% 98%, 80% 100%,
+    70% 97%, 60% 100%, 50% 98%, 40% 100%, 30% 97%, 20% 100%, 10% 98%, 3% 100%, 0% 96%
+  );
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--color-ink-line);
+  background: var(--color-ink);
+  color: var(--color-bone);
+  border-radius: 2px;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease;
+}
+.input::placeholder {
+  color: var(--color-bone-dim);
+}
+.input:focus {
+  outline: none;
+  border-color: var(--color-ember);
+}
+
+.card-hover {
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.card-hover:hover {
+  transform: translateY(-4px);
+  border-color: var(--color-ember);
+  box-shadow: 0 10px 30px -10px rgba(226, 52, 42, 0.45);
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  45% { opacity: 0.85; }
+  50% { opacity: 1; }
+  55% { opacity: 0.92; }
+}
+.animate-flicker {
+  animation: flicker 4s infinite ease-in-out;
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 22s linear infinite;
 }
