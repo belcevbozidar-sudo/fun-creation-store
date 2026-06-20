@@ -81,7 +81,7 @@ export default async function ProductPage({
           <p className="mt-2 text-bone-dim sm:text-lg">{product.tagline}</p>
 
           <p className="mt-5 font-head text-3xl text-spark">
-            {product.isCustomRequest ? "По оферта" : `${product.price.toFixed(2)} лв`}
+            {product.isCustomRequest ? "По оферта" : `${product.price.toFixed(2)} €`}
           </p>
 
           <p className="mt-5 leading-relaxed text-bone-dim">

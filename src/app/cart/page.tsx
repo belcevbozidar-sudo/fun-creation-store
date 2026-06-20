@@ -83,7 +83,7 @@ export default function CartPage() {
                   </button>
                 </div>
                 <span className="font-head text-lg text-spark">
-                  {(item.price * item.qty).toFixed(2)} лв
+                  {(item.price * item.qty).toFixed(2)} €
                 </span>
               </div>
             </div>
@@ -94,7 +94,7 @@ export default function CartPage() {
       <div className="mt-8 flex flex-col items-end gap-4">
         <div className="flex w-full items-center justify-between font-head text-xl uppercase tracking-wide text-bone sm:w-80">
           <span>Общо</span>
-          <span className="text-spark">{totalPrice.toFixed(2)} лв</span>
+          <span className="text-spark">{totalPrice.toFixed(2)} €</span>
         </div>
         <Link
           href="/checkout"

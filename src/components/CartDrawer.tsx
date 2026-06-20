@@ -110,7 +110,7 @@ export default function CartDrawer() {
                         </button>
                       </div>
                       <span className="font-head text-sm text-spark">
-                        {(item.price * item.qty).toFixed(2)} лв
+                        {(item.price * item.qty).toFixed(2)} €
                       </span>
                     </div>
                   </div>
@@ -121,7 +121,7 @@ export default function CartDrawer() {
             <div className="border-t border-ink-line px-5 py-4 space-y-3">
               <div className="flex items-center justify-between font-head text-base uppercase tracking-wide text-bone">
                 <span>Общо</span>
-                <span className="text-spark">{totalPrice.toFixed(2)} лв</span>
+                <span className="text-spark">{totalPrice.toFixed(2)} €</span>
               </div>
               <Link
                 href="/checkout"

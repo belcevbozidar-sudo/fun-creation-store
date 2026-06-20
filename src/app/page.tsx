@@ -25,7 +25,7 @@ export default function Home() {
 
         <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-24 sm:px-6">
           <p className="font-head mb-3 text-xs uppercase tracking-[0.3em] text-spark animate-flicker sm:text-sm">
-            Изковано в България
+            Произведено в България
           </p>
           <h1 className="font-display text-5xl leading-[1.05] text-bone sm:text-6xl lg:text-7xl">
             История.
@@ -97,7 +97,7 @@ export default function Home() {
       <section className="border-y border-ink-line bg-ink-soft">
         <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 py-12 sm:px-6 lg:grid-cols-4">
           {[
-            { icon: Hammer, title: "Изковано в България", desc: "Локално производство и печат" },
+            { icon: Hammer, title: "Произведено в България", desc: "Локално производство и печат" },
             { icon: Truck, title: "Бърза доставка", desc: "До врата в цялата страна" },
             { icon: Wrench, title: "Custom поръчки", desc: "Твоят дизайн, нашето майсторство" },
             { icon: ShieldCheck, title: "Качество без компромис", desc: "Издръжливи материали и печат" },

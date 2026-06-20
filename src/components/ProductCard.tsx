@@ -40,7 +40,7 @@ export default function ProductCard({ product }: { product: Product }) {
             </span>
           ) : (
             <span className="font-head text-lg text-spark">
-              {product.price.toFixed(2)} лв
+              {product.price.toFixed(2)} €
             </span>
           )}
         </div>

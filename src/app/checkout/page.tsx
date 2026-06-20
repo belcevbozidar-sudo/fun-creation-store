@@ -160,14 +160,14 @@ export default function CheckoutPage() {
                   </p>
                 </div>
                 <span className="font-head text-sm text-spark">
-                  {(item.price * item.qty).toFixed(2)} лв
+                  {(item.price * item.qty).toFixed(2)} €
                 </span>
               </li>
             ))}
           </ul>
           <div className="flex items-center justify-between border-t border-ink-line pt-3 font-head text-lg uppercase tracking-wide text-bone">
             <span>Общо</span>
-            <span className="text-spark">{totalPrice.toFixed(2)} лв</span>
+            <span className="text-spark">{totalPrice.toFixed(2)} €</span>
           </div>
         </div>
       </div>
