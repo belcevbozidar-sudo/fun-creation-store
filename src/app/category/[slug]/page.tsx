@@ -3,8 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight } from "lucide-react";
-import ProductCard from "@/components/ProductCard";
-import { categories, getCategory } from "@/lib/categories";
+import ProductListWithFilters from "@/components/ProductListWithFilters";
+import { categories } from "@/lib/categories";
 import { convexClient } from "@/lib/convex-client";
 import { api } from "../../../../convex/_generated/api";
 
@@ -62,11 +62,7 @@ export default async function CategoryPage({
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {products.map((p) => (
-            <ProductCard key={p.slug} product={p} />
-          ))}
-        </div>
+        <ProductListWithFilters products={products} categorySlug={slug} />
 
         {category.customOrderHref && (
           <div className="clip-jagged mt-12 flex flex-col items-start gap-4 bg-ink-card p-7 sm:flex-row sm:items-center sm:justify-between sm:p-9">
