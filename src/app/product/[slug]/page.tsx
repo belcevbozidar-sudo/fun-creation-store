@@ -5,16 +5,17 @@ import { notFound } from "next/navigation";
 import { ArrowRight, Check, ChevronRight } from "lucide-react";
 import AddToCartForm from "@/components/AddToCartForm";
 import ProductCard from "@/components/ProductCard";
-import { getCategory } from "@/lib/categories";
-import { getProduct, getRelatedProducts, products } from "@/lib/products";
+import { convexClient } from "@/lib/convex-client";
+import { api } from "../../../../convex/_generated/api";
 
 const CUSTOM_HREF: Record<string, string> = {
   "print-on-demand": "/custom-order/print-on-demand",
   "3d-printeri": "/custom-order/3d-printing",
 };
 
-export function generateStaticParams() {
-  return products.map((p) => ({ slug: p.slug }));
+export async function generateStaticParams() {
+  const allProducts = await convexClient.query(api.products.list);
+  return allProducts.map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({
@@ -23,7 +24,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProduct(slug);
+  const product = await convexClient.query(api.products.getBySlug, { slug });
   if (!product) return {};
   return {
     title: `${product.name} — FUN CREATION`,
@@ -37,11 +38,11 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = getProduct(slug);
+  const product = await convexClient.query(api.products.getBySlug, { slug });
   if (!product) notFound();
 
-  const category = getCategory(product.category);
-  const related = getRelatedProducts(slug, product.category, 4);
+  const category = await convexClient.query(api.categories.getBySlug, { slug: product.category });
+  const related = await convexClient.query(api.products.getRelated, { slug, category: product.category, limit: 4 });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">

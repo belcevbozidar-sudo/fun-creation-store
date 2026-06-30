@@ -5,7 +5,8 @@ import { notFound } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import { categories, getCategory } from "@/lib/categories";
-import { getProductsByCategory } from "@/lib/products";
+import { convexClient } from "@/lib/convex-client";
+import { api } from "../../../../convex/_generated/api";
 
 export function generateStaticParams() {
   return categories.map((c) => ({ slug: c.slug }));
@@ -17,7 +18,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const category = getCategory(slug);
+  const category = await convexClient.query(api.categories.getBySlug, { slug });
   if (!category) return {};
   return {
     title: `${category.name} — FUN CREATION`,
@@ -31,10 +32,10 @@ export default async function CategoryPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const category = getCategory(slug);
+  const category = await convexClient.query(api.categories.getBySlug, { slug });
   if (!category) notFound();
 
-  const products = getProductsByCategory(slug);
+  const products = await convexClient.query(api.products.getByCategory, { category: slug });
 
   return (
     <div>

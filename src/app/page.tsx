@@ -4,10 +4,11 @@ import { Flame, Hammer, Printer, ShieldCheck, Truck, Wrench } from "lucide-react
 import CategoryCard from "@/components/CategoryCard";
 import ProductCard from "@/components/ProductCard";
 import { categories } from "@/lib/categories";
-import { getFeaturedProducts } from "@/lib/products";
+import { convexClient } from "@/lib/convex-client";
+import { api } from "../../convex/_generated/api";
 
-export default function Home() {
-  const featured = getFeaturedProducts(8);
+export default async function Home() {
+  const featured = await convexClient.query(api.products.getFeatured, { limit: 8 });
 
   return (
     <div>
