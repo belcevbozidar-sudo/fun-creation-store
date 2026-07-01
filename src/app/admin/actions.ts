@@ -1,6 +1,8 @@
 "use server";
 
 import { cookies, headers } from "next/headers";
+import { promises as fs } from "fs";
+import path from "path";
 import { convexClient } from "@/lib/convex-client";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -104,29 +106,107 @@ export async function adminLogoutAction() {
   return { success: true };
 }
 
+// Transliterate Bulgarian Cyrillic to English Latin for slug generation
+function slugify(text: string): string {
+  const cyrillicToLatin: Record<string, string> = {
+    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ж': 'zh', 'з': 'z',
+    'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p',
+    'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch',
+    'ш': 'sh', 'щ': 'sht', 'ъ': 'a', 'ь': 'y', 'ю': 'yu', 'я': 'ya',
+    'А': 'a', 'Б': 'b', 'В': 'v', 'Г': 'g', 'Д': 'd', 'Е': 'e', 'Ж': 'zh', 'З': 'z',
+    'И': 'i', 'Й': 'y', 'К': 'k', 'Л': 'l', 'М': 'm', 'Н': 'n', 'О': 'o', 'П': 'p',
+    'Р': 'r', 'С': 's', 'Т': 't', 'У': 'u', 'Ф': 'f', 'Х': 'h', 'Ц': 'ts', 'Ч': 'ch',
+    'Ш': 'sh', 'Щ': 'sht', 'Ъ': 'a', 'Ь': 'y', 'Ю': 'yu', 'Я': 'ya'
+  };
+  
+  const transliterated = text.split('').map(char => cyrillicToLatin[char] || char).join('');
+  return transliterated
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '');
+}
+
 /* =========================================================================
    PRODUCTS CRUD ACTIONS
    ========================================================================= */
 
+export async function uploadFileAction(formData: FormData) {
+  if (!(await checkAdminAuth())) throw new Error("Unauthorized");
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { success: false, error: "Няма прикачен файл." };
+  }
+
+  const MAX_FILE_SIZE = 15 * 1024 * 1024;
+  if (file.size > MAX_FILE_SIZE) {
+    return { success: false, error: "Файлът е твърде голям (макс. 15MB)." };
+  }
+
+  try {
+    const uploadsDir = path.join(process.cwd(), "public", "uploads");
+    await fs.mkdir(uploadsDir, { recursive: true });
+    
+    const id = crypto.randomUUID().slice(0, 8).toUpperCase();
+    const ext = path.extname(file.name) || "";
+    const filename = `${id}${ext}`;
+    
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await fs.writeFile(path.join(uploadsDir, filename), buffer);
+    
+    return { success: true, url: `/uploads/${filename}` };
+  } catch (err: any) {
+    console.error("File upload error:", err);
+    return { success: false, error: "Грешка при запис на файла." };
+  }
+}
+
+export async function updateProductsOrderAction(orderedIds: string[]) {
+  if (!(await checkAdminAuth())) throw new Error("Unauthorized");
+
+  try {
+    for (let i = 0; i < orderedIds.length; i++) {
+      const id = orderedIds[i];
+      await convexClient.mutation(api.products.updateOrder, {
+        id: id as Id<"products">,
+        orderIndex: i,
+      });
+    }
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error updating order:", err);
+    return { success: false, error: "Грешка при преподреждане." };
+  }
+}
+
 export async function addProductAction(formData: FormData) {
   if (!(await checkAdminAuth())) throw new Error("Unauthorized");
 
-  const slug = formData.get("slug")?.toString() || "";
   const category = formData.get("category")?.toString() || "";
   const name = formData.get("name")?.toString() || "";
   const tagline = formData.get("tagline")?.toString() || "";
   const description = formData.get("description")?.toString() || "";
   const price = parseFloat(formData.get("price")?.toString() || "0");
-  const image = formData.get("image")?.toString() || "/images/products/placeholder.png";
   const badge = formData.get("badge")?.toString() || undefined;
   const isCustomRequest = formData.get("isCustomRequest") === "on";
-  const orderIndex = parseInt(formData.get("orderIndex")?.toString() || "10");
+
+  // Auto-generate slug from name
+  const slug = slugify(name);
+
+  // New products default to negative timestamp to show at the top by default (newest first)
+  const orderIndex = -Date.now();
 
   const detailsRaw = formData.get("details")?.toString() || "";
   const details = detailsRaw.split("\n").map(d => d.trim()).filter(Boolean);
 
-  const galleryRaw = formData.get("gallery")?.toString() || "";
-  const gallery = galleryRaw.split("\n").map(g => g.trim()).filter(Boolean);
+  const galleryRaw = formData.get("gallery")?.toString() || "[]";
+  let gallery: string[] = [];
+  try {
+    gallery = JSON.parse(galleryRaw);
+  } catch {
+    gallery = [];
+  }
+  
+  const image = gallery[0] || "/images/products/placeholder.png";
   if (gallery.length === 0) gallery.push(image);
 
   // Parse variants (JSON representation from client)
@@ -160,23 +240,33 @@ export async function addProductAction(formData: FormData) {
 export async function updateProductAction(id: string, formData: FormData) {
   if (!(await checkAdminAuth())) throw new Error("Unauthorized");
 
-  const slug = formData.get("slug")?.toString() || "";
   const category = formData.get("category")?.toString() || "";
   const name = formData.get("name")?.toString() || "";
   const tagline = formData.get("tagline")?.toString() || "";
   const description = formData.get("description")?.toString() || "";
   const price = parseFloat(formData.get("price")?.toString() || "0");
-  const image = formData.get("image")?.toString() || "";
   const badge = formData.get("badge")?.toString() || undefined;
   const isCustomRequest = formData.get("isCustomRequest") === "on";
-  const orderIndex = parseInt(formData.get("orderIndex")?.toString() || "10");
+  
+  // Preserved orderIndex
+  const orderIndex = parseInt(formData.get("orderIndex")?.toString() || "0") || -Date.now();
+
+  // Auto-generate slug from name on edits to keep it in sync with potential name changes
+  const slug = slugify(name);
 
   const detailsRaw = formData.get("details")?.toString() || "";
   const details = detailsRaw.split("\n").map(d => d.trim()).filter(Boolean);
 
-  const galleryRaw = formData.get("gallery")?.toString() || "";
-  const gallery = galleryRaw.split("\n").map(g => g.trim()).filter(Boolean);
-  if (gallery.length === 0 && image) gallery.push(image);
+  const galleryRaw = formData.get("gallery")?.toString() || "[]";
+  let gallery: string[] = [];
+  try {
+    gallery = JSON.parse(galleryRaw);
+  } catch {
+    gallery = [];
+  }
+  
+  const image = gallery[0] || "/images/products/placeholder.png";
+  if (gallery.length === 0) gallery.push(image);
 
   const variantsRaw = formData.get("variants")?.toString() || "[]";
   let variants = [];

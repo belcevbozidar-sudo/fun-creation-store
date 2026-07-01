@@ -140,3 +140,14 @@ export const softDelete = mutation({
     await ctx.db.patch(args.id, { deleted: true });
   },
 });
+
+// Update only the orderIndex of a product
+export const updateOrder = mutation({
+  args: {
+    id: v.id("products"),
+    orderIndex: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { orderIndex: args.orderIndex });
+  },
+});

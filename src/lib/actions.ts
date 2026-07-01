@@ -5,7 +5,7 @@ import path from "path";
 import { convexClient } from "./convex-client";
 import { api } from "../../convex/_generated/api";
 
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 
 export type OrderItemInput = {

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, Check, ChevronRight } from "lucide-react";
 import AddToCartForm from "@/components/AddToCartForm";
 import ProductCard from "@/components/ProductCard";
+import ProductGallery from "@/components/ProductGallery";
 import { convexClient } from "@/lib/convex-client";
 import { api } from "../../../../convex/_generated/api";
 
@@ -59,21 +59,7 @@ export default async function ProductPage({
       </nav>
 
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
-        <div className="relative aspect-square w-full overflow-hidden rounded-sm border border-ink-line bg-ink-card">
-          <Image
-            src={product.image}
-            alt={product.name}
-            fill
-            priority
-            sizes="(min-width: 1024px) 50vw, 100vw"
-            className="object-cover"
-          />
-          {product.badge && (
-            <span className="absolute left-4 top-4 rounded-sm bg-ember px-2.5 py-1 font-head text-xs uppercase tracking-wider text-bone">
-              {product.badge}
-            </span>
-          )}
-        </div>
+        <ProductGallery gallery={product.gallery} name={product.name} badge={product.badge} />
 
         <div className="flex flex-col">
           <h1 className="font-display text-3xl text-bone sm:text-4xl">

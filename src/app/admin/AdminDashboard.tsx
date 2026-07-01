@@ -11,7 +11,9 @@ import {
   addCategoryAction, updateCategoryAction, deleteCategoryAction,
   updateOrderStatusAction, deleteOrderAction,
   updateCustomOrderStatusAction, deleteCustomOrderAction,
-  deleteMessageAction
+  deleteMessageAction,
+  uploadFileAction,
+  updateProductsOrderAction
 } from "./actions";
 
 type Variant = {
@@ -110,7 +112,7 @@ export default function AdminDashboard({
 }: Props) {
   const [activeTab, setActiveTab] = useState<"products" | "categories" | "orders" | "custom_orders" | "messages">("products");
   
-  // State from Convex (client-side copies so edits take place instantly, though page updates on reload)
+  // State from Convex
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [orders, setOrders] = useState<Order[]>(initialOrders);
@@ -123,11 +125,143 @@ export default function AdminDashboard({
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
 
+  // Premium Multi-Image Uploading State
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  // Drag and Drop States for Images (Form)
+  const [draggedImageIdx, setDraggedImageIdx] = useState<number | null>(null);
+
+  // Drag and Drop States for Products (List Table)
+  const [draggedProductIdx, setDraggedProductIdx] = useState<number | null>(null);
+  const [draggedProductCat, setDraggedProductCat] = useState<string | null>(null);
+
   const [isPending, startTransition] = useTransition();
 
   async function handleLogout() {
     await adminLogoutAction();
     window.location.reload();
+  }
+
+  // Handle image upload from device
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    const newUrls = [...uploadedImages];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await uploadFileAction(formData);
+        if (res.success && res.url) {
+          newUrls.push(res.url);
+        } else {
+          alert(`Грешка при качване на ${file.name}: ${res.error}`);
+        }
+      } catch (err) {
+        console.error(err);
+        alert(`Възникна грешка при качване на ${file.name}`);
+      }
+    }
+
+    setUploadedImages(newUrls);
+    setUploading(false);
+    e.target.value = ""; // Clear file input
+  }
+
+  // Drag and Drop handlers for form images
+  function handleImageDragStart(e: React.DragEvent, index: number) {
+    setDraggedImageIdx(index);
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleImageDragOver(e: React.DragEvent) {
+    e.preventDefault();
+  }
+
+  function handleImageDrop(e: React.DragEvent, index: number) {
+    e.preventDefault();
+    if (draggedImageIdx === null) return;
+    const list = [...uploadedImages];
+    const draggedItem = list[draggedImageIdx];
+    list.splice(draggedImageIdx, 1);
+    list.splice(index, 0, draggedItem);
+    setUploadedImages(list);
+    setDraggedImageIdx(null);
+  }
+
+  function moveImage(from: number, to: number) {
+    const list = [...uploadedImages];
+    const temp = list[from];
+    list[from] = list[to];
+    list[to] = temp;
+    setUploadedImages(list);
+  }
+
+  // Drag and Drop handlers for products list table
+  function handleProductDragStart(index: number, category: string) {
+    setDraggedProductIdx(index);
+    setDraggedProductCat(category);
+  }
+
+  async function handleProductDrop(targetIndex: number, category: string) {
+    if (draggedProductIdx === null || draggedProductCat !== category) return;
+
+    const catProducts = products
+      .filter((p) => p.category === category)
+      .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+
+    const list = [...catProducts];
+    const draggedItem = list[draggedProductIdx];
+    list.splice(draggedProductIdx, 1);
+    list.splice(targetIndex, 0, draggedItem);
+
+    // Optimistically update list client-side
+    const sortedList = [...list];
+    const newProducts = products.map((p) => {
+      if (p.category === category) {
+        const newIndex = sortedList.findIndex((item) => item._id === p._id);
+        return { ...p, orderIndex: newIndex };
+      }
+      return p;
+    });
+
+    setProducts(newProducts);
+    setDraggedProductIdx(null);
+    setDraggedProductCat(null);
+
+    // Persist sorted order indices to Convex database
+    await updateProductsOrderAction(sortedList.map((item) => item._id));
+  }
+
+  async function moveProduct(category: string, fromIndex: number, toIndex: number) {
+    const catProducts = products
+      .filter((p) => p.category === category)
+      .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+
+    if (toIndex < 0 || toIndex >= catProducts.length) return;
+
+    const list = [...catProducts];
+    const temp = list[fromIndex];
+    list[fromIndex] = list[toIndex];
+    list[toIndex] = temp;
+
+    // Optimistically update list client-side
+    const newProducts = products.map((p) => {
+      if (p.category === category) {
+        const newIndex = list.findIndex((item) => item._id === p._id);
+        return { ...p, orderIndex: newIndex };
+      }
+      return p;
+    });
+
+    setProducts(newProducts);
+    await updateProductsOrderAction(list.map((item) => item._id));
   }
 
   // Parse variants textarea to array: Label: Option1, Option2
@@ -173,6 +307,9 @@ export default function AdminDashboard({
     const rawVariants = formData.get("variants_text")?.toString() || "";
     const parsed = parseVariants(rawVariants);
     formData.set("variants", JSON.stringify(parsed));
+
+    // Inject final sorted images array from state as JSON string
+    formData.set("gallery", JSON.stringify(uploadedImages));
 
     startTransition(async () => {
       if (isEdit && editingProduct) {
@@ -321,69 +458,127 @@ export default function AdminDashboard({
         
         {/* PRODUCTS TAB */}
         {activeTab === "products" && (
-          <div>
+          <div className="space-y-8">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="font-display text-xl text-bone uppercase tracking-wider">Списък Продукти</h2>
               <button
-                onClick={() => setIsAddingProduct(true)}
+                onClick={() => {
+                  setIsAddingProduct(true);
+                  setUploadedImages([]);
+                }}
                 className="flex items-center gap-1.5 rounded-sm bg-ember px-4 py-2.5 font-head text-xs uppercase tracking-wider text-bone transition-colors hover:bg-ember-dark"
               >
                 <Plus size={16} /> Нов Продукт
               </button>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-sm text-bone-dim">
-                <thead>
-                  <tr className="border-b border-ink-line font-head text-xs uppercase tracking-wider text-bone">
-                    <th className="pb-3 pl-2">Име / Slug</th>
-                    <th className="pb-3">Категория</th>
-                    <th className="pb-3">Цена</th>
-                    <th className="pb-3">Сортиране</th>
-                    <th className="pb-3 text-right pr-2">Действия</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {products.map((product) => (
-                    <tr key={product._id} className="border-b border-ink-line/50 hover:bg-ink-soft/40 transition-colors">
-                      <td className="py-4 pl-2 font-bold text-bone">
-                        <div>{product.name}</div>
-                        <div className="font-mono text-xs font-normal text-bone-dim/60">/{product.slug}</div>
-                      </td>
-                      <td className="py-4 font-mono text-xs uppercase tracking-wider">{product.category}</td>
-                      <td className="py-4 font-head text-spark text-base">{product.isCustomRequest ? "Оферта" : `${product.price.toFixed(2)} €`}</td>
-                      <td className="py-4 font-mono text-xs">{product.orderIndex ?? 10}</td>
-                      <td className="py-4 text-right pr-2">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => setEditingProduct(product)}
-                            className="flex h-8 w-8 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:border-spark hover:text-spark transition-colors"
-                            title="Редактирай"
+
+            {/* Display products grouped by category */}
+            {categories.map((cat) => {
+              const catProducts = products
+                .filter((p) => p.category === cat.slug)
+                .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+
+              return (
+                <div key={cat.slug} className="rounded-sm border border-ink-line bg-ink p-4 space-y-4">
+                  <h3 className="font-display text-sm text-spark uppercase tracking-wider border-b border-ink-line/50 pb-2">
+                    {cat.name} ({catProducts.length})
+                  </h3>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left text-sm text-bone-dim">
+                      <thead>
+                        <tr className="border-b border-ink-line font-head text-xs uppercase tracking-wider text-bone">
+                          <th className="pb-3 pl-2 w-16">Снимка</th>
+                          <th className="pb-3 pl-2">Име</th>
+                          <th className="pb-3">Цена</th>
+                          <th className="pb-3 text-right pr-2">Действия и Подреждане</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {catProducts.map((product, idx) => (
+                          <tr
+                            key={product._id}
+                            draggable
+                            onDragStart={() => handleProductDragStart(idx, cat.slug)}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={() => handleProductDrop(idx, cat.slug)}
+                            className="border-b border-ink-line/30 hover:bg-ink-soft/40 transition-colors cursor-move"
                           >
-                            <Edit size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProduct(product._id)}
-                            className="flex h-8 w-8 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:border-ember hover:text-ember transition-colors"
-                            title="Изтрий"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {products.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="py-8 text-center text-bone-dim">Няма намерени продукти.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                            <td className="py-2.5 pl-2">
+                              <div className="relative h-11 w-11 overflow-hidden rounded-sm border border-ink-line bg-ink-card">
+                                <img src={product.image} alt="" className="object-cover w-full h-full" />
+                              </div>
+                            </td>
+                            <td className="py-2.5 pl-2 font-bold text-bone">
+                              {product.name}
+                            </td>
+                            <td className="py-2.5 font-head text-spark text-base">
+                              {product.isCustomRequest ? "Оферта" : `${product.price.toFixed(2)} €`}
+                            </td>
+                            <td className="py-2.5 text-right pr-2">
+                              <div className="flex justify-end items-center gap-3">
+                                {/* Actions */}
+                                <button
+                                  onClick={() => {
+                                    setEditingProduct(product);
+                                    setUploadedImages(product.gallery || (product.image ? [product.image] : []));
+                                  }}
+                                  className="flex h-8 w-8 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:border-spark hover:text-spark transition-colors"
+                                  title="Редактирай"
+                                >
+                                  <Edit size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteProduct(product._id)}
+                                  className="flex h-8 w-8 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:border-ember hover:text-ember transition-colors"
+                                  title="Изтрий"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+
+                                {/* Drag-and-drop Touch & Desktop Handles */}
+                                <div className="flex items-center gap-1 border-l border-ink-line/50 pl-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => moveProduct(cat.slug, idx, idx - 1)}
+                                    disabled={idx === 0}
+                                    className="flex h-7 w-7 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:text-bone hover:border-bone disabled:opacity-30 disabled:hover:text-bone-dim disabled:hover:border-ink-line"
+                                    title="Нагоре"
+                                  >
+                                    ▲
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveProduct(cat.slug, idx, idx + 1)}
+                                    disabled={idx === catProducts.length - 1}
+                                    className="flex h-7 w-7 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:text-bone hover:border-bone disabled:opacity-30 disabled:hover:text-bone-dim disabled:hover:border-ink-line"
+                                    title="Надолу"
+                                  >
+                                    ▼
+                                  </button>
+                                  
+                                  {/* Drag Handle Icon */}
+                                  <span className="text-bone-dim/40 cursor-grab px-1 select-none font-bold text-lg leading-none" title="Задръжте за подреждане">
+                                    ☰
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {catProducts.length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="py-8 text-center text-bone-dim">Няма продукти в тази категория.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
-
-        {/* CATEGORIES TAB */}
         {activeTab === "categories" && (
           <div>
             <div className="mb-6 flex items-center justify-between">
@@ -655,18 +850,100 @@ export default function AdminDashboard({
             </div>
 
             <form onSubmit={(e) => handleProductSubmit(e, !!editingProduct)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+              
+              {/* IMAGE UPLOAD FIELD AT THE VERY TOP */}
+              <div className="rounded-sm border border-ink-line bg-ink p-4 space-y-4">
+                <span className="block font-head text-xs uppercase tracking-wider text-bone-dim">
+                  Снимки на продукта * (влачи за преподреждане, първата е основна)
+                </span>
+                
+                {/* File picker */}
+                <label className="flex cursor-pointer flex-col items-center justify-center rounded-sm border-2 border-dashed border-ink-line py-6 hover:border-ember transition-colors">
+                  <span className="font-head text-xs uppercase tracking-wider text-bone hover:text-ember">Избери снимки от устройството</span>
+                  <span className="text-xs text-bone-dim mt-1">Поддържа се избор на множество файлове</span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                {uploading && <div className="text-xs text-spark animate-pulse font-mono">Качване на снимки в реално време...</div>}
+
+                {/* Thumbnails list with Drag Handles */}
+                {uploadedImages.length > 0 && (
+                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
+                    {uploadedImages.map((url, idx) => (
+                      <div
+                        key={url + idx}
+                        draggable
+                        onDragStart={(e) => handleImageDragStart(e, idx)}
+                        onDragOver={(e) => handleImageDragOver(e)}
+                        onDrop={(e) => handleImageDrop(e, idx)}
+                        className="relative aspect-square rounded-sm border border-ink-line bg-ink-card overflow-hidden group select-none cursor-move"
+                      >
+                        <img src={url} alt="" className="object-cover w-full h-full" />
+                        
+                        {/* Drag Handle Icon - Six Dots */}
+                        <div 
+                          className="absolute top-1 left-1 bg-ink/75 text-bone-dim hover:text-bone px-1 py-0.5 rounded-sm cursor-grab active:cursor-grabbing flex items-center justify-center font-bold text-[10px] leading-none"
+                          title="Хвани за местене"
+                        >
+                          ⋮⋮
+                        </div>
+
+                        {/* Remove Image Button */}
+                        <button
+                          type="button"
+                          onClick={() => setUploadedImages(uploadedImages.filter((_, i) => i !== idx))}
+                          className="absolute top-1 right-1 bg-ember/85 text-bone hover:bg-ember p-1 rounded-sm flex items-center justify-center"
+                          title="Премахни снимка"
+                        >
+                          <X size={12} />
+                        </button>
+
+                        {/* Position Indicator */}
+                        <div className="absolute bottom-1 left-1 bg-ink/75 text-[9px] px-1 rounded-sm text-spark font-mono">
+                          {idx === 0 ? "ГЛАВНА" : `${idx + 1}`}
+                        </div>
+
+                        {/* Mobile touch helpers */}
+                        <div className="absolute bottom-1 right-1 flex gap-1">
+                          {idx > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => moveImage(idx, idx - 1)}
+                              className="bg-ink/80 text-bone-dim hover:text-bone text-[9px] px-1 rounded-sm"
+                              title="Наляво"
+                            >
+                              ◀
+                            </button>
+                          )}
+                          {idx < uploadedImages.length - 1 && (
+                            <button
+                              type="button"
+                              onClick={() => moveImage(idx, idx + 1)}
+                              className="bg-ink/80 text-bone-dim hover:text-bone text-[9px] px-1 rounded-sm"
+                              title="Надясно"
+                            >
+                              ▶
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Form Input fields */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
                   <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Име *</span>
                   <input name="name" required defaultValue={editingProduct?.name} className="input" />
                 </label>
-                <label className="block">
-                  <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Slug (напр: teniska-metal) *</span>
-                  <input name="slug" required defaultValue={editingProduct?.slug} className="input" />
-                </label>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
                   <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Категория *</span>
                   <select name="category" defaultValue={editingProduct?.category} className="input">
@@ -677,9 +954,16 @@ export default function AdminDashboard({
                     ))}
                   </select>
                 </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
                   <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Цена (в EUR) *</span>
                   <input name="price" type="number" step="0.01" required defaultValue={editingProduct?.price ?? 0} className="input" />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Етикет (badge)</span>
+                  <input name="badge" defaultValue={editingProduct?.badge} placeholder="напр: Бестселър, Нов" className="input" />
                 </label>
               </div>
 
@@ -706,29 +990,6 @@ export default function AdminDashboard({
                 />
               </label>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Основна снимка (Път/URL)</span>
-                  <input name="image" defaultValue={editingProduct?.image} className="input" />
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Етикет (badge)</span>
-                  <input name="badge" defaultValue={editingProduct?.badge} placeholder="напр: Бестселър, Нов" className="input" />
-                </label>
-              </div>
-
-              <label className="block">
-                <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">
-                  Галерия със снимки (пътища на нови редове)
-                </span>
-                <textarea 
-                  name="gallery" 
-                  rows={2} 
-                  defaultValue={editingProduct?.gallery?.join("\n")} 
-                  className="input resize-none" 
-                />
-              </label>
-
               <label className="block">
                 <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">
                   Варианти (Формат: Label: Option1, Option2, Option3)
@@ -742,23 +1003,24 @@ export default function AdminDashboard({
                 />
               </label>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Поредност при сортиране</span>
-                  <input name="orderIndex" type="number" defaultValue={editingProduct?.orderIndex ?? 10} className="input" />
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer select-none pt-7">
-                  <input
-                    name="isCustomRequest"
-                    type="checkbox"
-                    defaultChecked={editingProduct?.isCustomRequest}
-                    className="h-4 w-4 rounded-sm border-ink-line bg-ink accent-ember text-ember focus:ring-0 focus:ring-offset-0"
-                  />
-                  <span className="font-head text-xs uppercase tracking-wider text-bone-dim">
-                    Това е Custom поръчка (По оферта)
-                  </span>
-                </label>
+              <div className="flex items-center gap-2 cursor-pointer select-none pt-4">
+                <input
+                  name="isCustomRequest"
+                  type="checkbox"
+                  defaultChecked={editingProduct?.isCustomRequest}
+                  className="h-4 w-4 rounded-sm border-ink-line bg-ink accent-ember text-ember focus:ring-0 focus:ring-offset-0"
+                />
+                <span className="font-head text-xs uppercase tracking-wider text-bone-dim">
+                  Това е Custom поръчка (По оферта)
+                </span>
               </div>
+
+              {/* Hidden controls for preservation of database details */}
+              {editingProduct && (
+                <>
+                  <input type="hidden" name="orderIndex" value={editingProduct.orderIndex ?? ""} />
+                </>
+              )}
 
               <div className="flex gap-3 pt-4 border-t border-ink-line">
                 <button
@@ -782,9 +1044,7 @@ export default function AdminDashboard({
             </form>
           </div>
         </div>
-      )}
-
-      {/* =======================================================================
+      )}      {/* =======================================================================
           MODAL: ADD/EDIT CATEGORY
           ======================================================================= */}
       {(isAddingCategory || editingCategory) && (
