@@ -135,6 +135,9 @@ export default function AdminDashboard({
   // Drag and Drop States for Products (List Table)
   const [draggedProductIdx, setDraggedProductIdx] = useState<number | null>(null);
   const [draggedProductCat, setDraggedProductCat] = useState<string | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [dragOverCat, setDragOverCat] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<"top" | "bottom" | null>(null);
 
   const [isPending, startTransition] = useTransition();
 
@@ -209,6 +212,25 @@ export default function AdminDashboard({
     setDraggedProductCat(category);
   }
 
+  function handleProductDragOver(e: React.DragEvent, index: number, category: string) {
+    e.preventDefault();
+    if (draggedProductIdx === null || draggedProductCat !== category) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relativeY = e.clientY - rect.top;
+    const position = relativeY < rect.height / 2 ? "top" : "bottom";
+
+    setDragOverIdx(index);
+    setDragOverCat(category);
+    setDropPosition(position);
+  }
+
+  function handleProductDragLeave() {
+    setDragOverIdx(null);
+    setDragOverCat(null);
+    setDropPosition(null);
+  }
+
   async function handleProductDrop(targetIndex: number, category: string) {
     if (draggedProductIdx === null || draggedProductCat !== category) return;
 
@@ -218,8 +240,19 @@ export default function AdminDashboard({
 
     const list = [...catProducts];
     const draggedItem = list[draggedProductIdx];
+    
+    // Remove the dragged item from its current index
     list.splice(draggedProductIdx, 1);
-    list.splice(targetIndex, 0, draggedItem);
+    
+    // Calculate new target index based on drop position relative to target item
+    const targetItem = catProducts[targetIndex];
+    let insertIndex = list.findIndex((p) => p._id === targetItem._id);
+    
+    if (dropPosition === "bottom") {
+      insertIndex = insertIndex + 1;
+    }
+    
+    list.splice(insertIndex, 0, draggedItem);
 
     // Optimistically update list client-side
     const sortedList = [...list];
@@ -232,36 +265,16 @@ export default function AdminDashboard({
     });
 
     setProducts(newProducts);
+    
+    // Reset drag states
     setDraggedProductIdx(null);
     setDraggedProductCat(null);
+    setDragOverIdx(null);
+    setDragOverCat(null);
+    setDropPosition(null);
 
     // Persist sorted order indices to Convex database
     await updateProductsOrderAction(sortedList.map((item) => item._id));
-  }
-
-  async function moveProduct(category: string, fromIndex: number, toIndex: number) {
-    const catProducts = products
-      .filter((p) => p.category === category)
-      .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
-
-    if (toIndex < 0 || toIndex >= catProducts.length) return;
-
-    const list = [...catProducts];
-    const temp = list[fromIndex];
-    list[fromIndex] = list[toIndex];
-    list[toIndex] = temp;
-
-    // Optimistically update list client-side
-    const newProducts = products.map((p) => {
-      if (p.category === category) {
-        const newIndex = list.findIndex((item) => item._id === p._id);
-        return { ...p, orderIndex: newIndex };
-      }
-      return p;
-    });
-
-    setProducts(newProducts);
-    await updateProductsOrderAction(list.map((item) => item._id));
   }
 
   // Parse variants textarea to array: Label: Option1, Option2
@@ -488,87 +501,89 @@ export default function AdminDashboard({
                     <table className="w-full border-collapse text-left text-sm text-bone-dim">
                       <thead>
                         <tr className="border-b border-ink-line font-head text-xs uppercase tracking-wider text-bone">
+                          <th className="pb-3 pl-2 w-10"></th>
                           <th className="pb-3 pl-2 w-16">Снимка</th>
                           <th className="pb-3 pl-2">Име</th>
                           <th className="pb-3">Цена</th>
-                          <th className="pb-3 text-right pr-2">Действия и Подреждане</th>
+                          <th className="pb-3 text-right pr-2">Действия</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {catProducts.map((product, idx) => (
-                          <tr
-                            key={product._id}
-                            draggable
-                            onDragStart={() => handleProductDragStart(idx, cat.slug)}
-                            onDragOver={(e) => e.preventDefault()}
-                            onDrop={() => handleProductDrop(idx, cat.slug)}
-                            className="border-b border-ink-line/30 hover:bg-ink-soft/40 transition-colors cursor-move"
-                          >
-                            <td className="py-2.5 pl-2">
-                              <div className="relative h-11 w-11 overflow-hidden rounded-sm border border-ink-line bg-ink-card">
-                                <img src={product.image} alt="" className="object-cover w-full h-full" />
-                              </div>
-                            </td>
-                            <td className="py-2.5 pl-2 font-bold text-bone">
-                              {product.name}
-                            </td>
-                            <td className="py-2.5 font-head text-spark text-base">
-                              {product.isCustomRequest ? "Оферта" : `${product.price.toFixed(2)} €`}
-                            </td>
-                            <td className="py-2.5 text-right pr-2">
-                              <div className="flex justify-end items-center gap-3">
-                                {/* Actions */}
-                                <button
-                                  onClick={() => {
-                                    setEditingProduct(product);
-                                    setUploadedImages(product.gallery || (product.image ? [product.image] : []));
-                                  }}
-                                  className="flex h-8 w-8 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:border-spark hover:text-spark transition-colors"
-                                  title="Редактирай"
-                                >
-                                  <Edit size={14} />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteProduct(product._id)}
-                                  className="flex h-8 w-8 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:border-ember hover:text-ember transition-colors"
-                                  title="Изтрий"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
+                        {catProducts.map((product, idx) => {
+                          const isDragOver = dragOverIdx === idx && dragOverCat === cat.slug;
+                          const isDragged = draggedProductIdx === idx && draggedProductCat === cat.slug;
 
-                                {/* Drag-and-drop Touch & Desktop Handles */}
-                                <div className="flex items-center gap-1 border-l border-ink-line/50 pl-3">
-                                  <button
-                                    type="button"
-                                    onClick={() => moveProduct(cat.slug, idx, idx - 1)}
-                                    disabled={idx === 0}
-                                    className="flex h-7 w-7 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:text-bone hover:border-bone disabled:opacity-30 disabled:hover:text-bone-dim disabled:hover:border-ink-line"
-                                    title="Нагоре"
-                                  >
-                                    ▲
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => moveProduct(cat.slug, idx, idx + 1)}
-                                    disabled={idx === catProducts.length - 1}
-                                    className="flex h-7 w-7 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:text-bone hover:border-bone disabled:opacity-30 disabled:hover:text-bone-dim disabled:hover:border-ink-line"
-                                    title="Надолу"
-                                  >
-                                    ▼
-                                  </button>
-                                  
-                                  {/* Drag Handle Icon */}
-                                  <span className="text-bone-dim/40 cursor-grab px-1 select-none font-bold text-lg leading-none" title="Задръжте за подреждане">
-                                    ☰
-                                  </span>
+                          return (
+                            <tr
+                              key={product._id}
+                              draggable
+                              onDragStart={() => handleProductDragStart(idx, cat.slug)}
+                              onDragOver={(e) => handleProductDragOver(e, idx, cat.slug)}
+                              onDragLeave={handleProductDragLeave}
+                              onDrop={() => handleProductDrop(idx, cat.slug)}
+                              className={`border-b border-ink-line/30 hover:bg-ink-soft/40 transition-all duration-100 relative ${
+                                isDragged ? "opacity-30" : ""
+                              } ${
+                                isDragOver && dropPosition === "top" ? "border-t-2 border-t-spark" : ""
+                              } ${
+                                isDragOver && dropPosition === "bottom" ? "border-b-2 border-b-spark" : ""
+                              }`}
+                            >
+                              {/* Leftmost Drag Handle Column */}
+                              <td className="py-2.5 pl-2 text-left w-10">
+                                <span
+                                  className="text-bone-dim/40 cursor-grab hover:text-bone hover:border-bone select-none font-bold text-lg leading-none block py-1"
+                                  title="Задръжте за подреждане"
+                                >
+                                  ☰
+                                </span>
+                              </td>
+
+                              {/* Product Image Column */}
+                              <td className="py-2.5 pl-2 w-16">
+                                <div className="relative h-11 w-11 overflow-hidden rounded-sm border border-ink-line bg-ink-card">
+                                  <img src={product.image} alt="" className="object-cover w-full h-full" />
                                 </div>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+
+                              {/* Product Name Column */}
+                              <td className="py-2.5 pl-2 font-bold text-bone">
+                                {product.name}
+                              </td>
+
+                              {/* Price Column */}
+                              <td className="py-2.5 font-head text-spark text-base">
+                                {product.isCustomRequest ? "Оферта" : `${product.price.toFixed(2)} €`}
+                              </td>
+
+                              {/* Edit & Delete Action Buttons */}
+                              <td className="py-2.5 text-right pr-2">
+                                <div className="flex justify-end items-center gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setEditingProduct(product);
+                                      setUploadedImages(product.gallery || (product.image ? [product.image] : []));
+                                    }}
+                                    className="flex h-8 w-8 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:border-spark hover:text-spark transition-colors"
+                                    title="Редактирай"
+                                  >
+                                    <Edit size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteProduct(product._id)}
+                                    className="flex h-8 w-8 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:border-ember hover:text-ember transition-colors"
+                                    title="Изтрий"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                         {catProducts.length === 0 && (
                           <tr>
-                            <td colSpan={4} className="py-8 text-center text-bone-dim">Няма продукти в тази категория.</td>
+                            <td colSpan={5} className="py-8 text-center text-bone-dim">Няма продукти в тази категория.</td>
                           </tr>
                         )}
                       </tbody>
@@ -579,6 +594,7 @@ export default function AdminDashboard({
             })}
           </div>
         )}
+
         {activeTab === "categories" && (
           <div>
             <div className="mb-6 flex items-center justify-between">
