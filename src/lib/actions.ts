@@ -51,7 +51,7 @@ export async function submitOrder(input: OrderInput) {
     });
 
     // Send ntfy notification in background
-    const orderDetails = input.items.map(item => `${item.name} (${item.qty} бр. x ${item.price.toFixed(2)} €)`).join("\n");
+    const orderDetails = input.items.map(item => `${item.name} (${item.variantLabel ? `Опция: ${item.variantLabel}` : 'без опция'}) - ${item.qty} бр. x ${item.price.toFixed(2)} €`).join("\n");
     const ntfyMessage = `Поръчка № ${id}\nКлиент: ${input.name}\nТелефон: ${input.phone}\nИмейл: ${input.email || 'няма'}\nГрад: ${input.city}\nАдрес: ${input.address}\n\nПродукти:\n${orderDetails}\n\nОбщо: ${input.total.toFixed(2)} €\nБележки: ${input.notes || 'няма'}`;
     sendNtfyNotification("Нова Поръчка! 🛍️", ntfyMessage, {
       tags: "shopping_bags,moneybag",
@@ -105,7 +105,8 @@ export async function submitCustomOrder(formData: FormData) {
     });
 
     // Send ntfy notification in background
-    const ntfyMessage = `Заявка № ${id}\nТип: ${type}\nКлиент: ${name}\nТелефон: ${phone}\nИмейл: ${email || 'няма'}\n\nОписание: ${description}\nФайл: ${attachment || 'няма'}`;
+    const attachmentUrl = attachment ? `https://fun-creation-store.vercel.app/uploads/${attachment}` : 'няма';
+    const ntfyMessage = `Заявка № ${id}\nТип: ${type === '3d-printing' ? '3D Принтиране ⚙️' : 'Метъл тениска / Дизайн 👕'}\nКлиент: ${name}\nТелефон: ${phone}\nИмейл: ${email || 'няма'}\n\nОписание:\n${description}\n\nФайл за сваляне:\n${attachmentUrl}`;
     sendNtfyNotification("Нова Индивидуална Заявка! 🎨", ntfyMessage, {
       tags: "art,email",
       priority: "default",

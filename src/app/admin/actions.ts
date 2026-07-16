@@ -324,14 +324,16 @@ export async function deleteProductAction(id: string) {
 export async function addCategoryAction(formData: FormData) {
   if (!(await checkAdminAuth())) throw new Error("Unauthorized");
 
-  const slug = formData.get("slug")?.toString() || "";
   const name = formData.get("name")?.toString() || "";
   const shortName = formData.get("shortName")?.toString() || "";
   const tagline = formData.get("tagline")?.toString() || "";
   const description = formData.get("description")?.toString() || "";
   const image = formData.get("image")?.toString() || "";
-  const customOrderHref = formData.get("customOrderHref")?.toString() || undefined;
-  const customOrderLabel = formData.get("customOrderLabel")?.toString() || undefined;
+
+  // Auto-generate slug from category name
+  const slug = slugify(name);
+  const customOrderHref = `/custom-order/${slug}`;
+  const customOrderLabel = "Поръчай индивидуален дизайн";
 
   await convexClient.mutation(api.categories.add, {
     slug,
@@ -340,8 +342,8 @@ export async function addCategoryAction(formData: FormData) {
     tagline,
     description,
     image,
-    customOrderHref: customOrderHref || undefined,
-    customOrderLabel: customOrderLabel || undefined,
+    customOrderHref,
+    customOrderLabel,
   });
 
   return { success: true };
@@ -350,14 +352,16 @@ export async function addCategoryAction(formData: FormData) {
 export async function updateCategoryAction(id: string, formData: FormData) {
   if (!(await checkAdminAuth())) throw new Error("Unauthorized");
 
-  const slug = formData.get("slug")?.toString() || "";
   const name = formData.get("name")?.toString() || "";
   const shortName = formData.get("shortName")?.toString() || "";
   const tagline = formData.get("tagline")?.toString() || "";
   const description = formData.get("description")?.toString() || "";
   const image = formData.get("image")?.toString() || "";
-  const customOrderHref = formData.get("customOrderHref")?.toString() || undefined;
-  const customOrderLabel = formData.get("customOrderLabel")?.toString() || undefined;
+
+  // Preserve existing slug from hidden input or fallback to name slugify
+  const slug = formData.get("slug")?.toString() || slugify(name);
+  const customOrderHref = `/custom-order/${slug}`;
+  const customOrderLabel = "Поръчай индивидуален дизайн";
 
   await convexClient.mutation(api.categories.update, {
     id: id as Id<"categories">,
@@ -367,8 +371,8 @@ export async function updateCategoryAction(id: string, formData: FormData) {
     tagline,
     description,
     image,
-    customOrderHref: customOrderHref || undefined,
-    customOrderLabel: customOrderLabel || undefined,
+    customOrderHref,
+    customOrderLabel,
   });
 
   return { success: true };

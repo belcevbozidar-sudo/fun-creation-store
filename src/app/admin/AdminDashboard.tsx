@@ -129,6 +129,10 @@ export default function AdminDashboard({
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
 
+  // Premium Category Image Uploading State
+  const [uploadedCategoryImage, setUploadedCategoryImage] = useState<string>("");
+  const [uploadingCategory, setUploadingCategory] = useState(false);
+
   // Drag and Drop States for Images (Form)
   const [draggedImageIdx, setDraggedImageIdx] = useState<number | null>(null);
 
@@ -175,6 +179,31 @@ export default function AdminDashboard({
     setUploadedImages(newUrls);
     setUploading(false);
     e.target.value = ""; // Clear file input
+  }
+
+  // Handle category image upload from device
+  async function handleCategoryImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingCategory(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await uploadFileAction(formData);
+      if (res.success && res.url) {
+        setUploadedCategoryImage(res.url);
+      } else {
+        alert(`Грешка при качване на ${file.name}: ${res.error}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert(`Възникна грешка при качване на ${file.name}`);
+    } finally {
+      setUploadingCategory(false);
+      e.target.value = ""; // Clear file input
+    }
   }
 
   // Drag and Drop handlers for form images
@@ -593,7 +622,10 @@ export default function AdminDashboard({
             <div className="mb-6 flex items-center justify-between">
               <h2 className="font-display text-xl text-bone uppercase tracking-wider">Списък Категории</h2>
               <button
-                onClick={() => setIsAddingCategory(true)}
+                onClick={() => {
+                  setIsAddingCategory(true);
+                  setUploadedCategoryImage("");
+                }}
                 className="flex items-center gap-1.5 rounded-sm bg-ember px-4 py-2.5 font-head text-xs uppercase tracking-wider text-bone transition-colors hover:bg-ember-dark"
               >
                 <Plus size={16} /> Нова Категория
@@ -621,7 +653,10 @@ export default function AdminDashboard({
                       <td className="py-4 text-right pr-2">
                         <div className="flex justify-end gap-2">
                           <button
-                            onClick={() => setEditingCategory(cat)}
+                            onClick={() => {
+                              setEditingCategory(cat);
+                              setUploadedCategoryImage(cat.image || "");
+                            }}
                             className="flex h-8 w-8 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:border-spark hover:text-spark transition-colors"
                             title="Редактирай"
                           >
@@ -1075,25 +1110,72 @@ export default function AdminDashboard({
             </div>
 
             <form onSubmit={(e) => handleCategorySubmit(e, !!editingCategory)} className="space-y-4">
+              {/* Hidden fields */}
+              {editingCategory && (
+                <input type="hidden" name="slug" value={editingCategory.slug} />
+              )}
+
+              {/* Category Image Upload from Device */}
+              <div className="rounded-sm border border-ink-line bg-ink p-4 space-y-4">
+                <span className="block font-head text-xs uppercase tracking-wider text-bone-dim">
+                  Снимка на категорията * (избери от устройството)
+                </span>
+                
+                {uploadedCategoryImage ? (
+                  <div className="relative group h-40 w-full overflow-hidden rounded-sm border border-ink-line bg-ink-card">
+                    <img src={uploadedCategoryImage} alt="Категория" className="object-cover w-full h-full" />
+                    <div className="absolute inset-0 bg-ink/80 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-3 transition-opacity duration-200">
+                      <label className="cursor-pointer rounded-sm bg-ember px-4 py-2 font-head text-xs uppercase tracking-wider text-bone hover:bg-ember-dark transition-colors">
+                        Промени
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleCategoryImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setUploadedCategoryImage("")}
+                        className="rounded-sm border border-ink-line px-4 py-2 font-head text-xs uppercase tracking-wider text-bone-dim hover:text-bone hover:border-bone transition-colors"
+                      >
+                        Изтрий
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex cursor-pointer flex-col items-center justify-center rounded-sm border-2 border-dashed border-ink-line py-6 hover:border-ember transition-colors">
+                    {uploadingCategory ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-spark border-t-transparent" />
+                        <p className="font-head text-xs uppercase tracking-wider text-spark animate-pulse">Качване...</p>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="font-head text-xs uppercase tracking-wider text-bone hover:text-ember">Избери снимка от устройството</span>
+                        <span className="text-xs text-bone-dim mt-1">PNG, JPG, JPEG или WEBP</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={uploadingCategory}
+                      onChange={handleCategoryImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+                <input type="hidden" name="image" required value={uploadedCategoryImage} />
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
                   <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Име *</span>
                   <input name="name" required defaultValue={editingCategory?.name} className="input" />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Slug *</span>
-                  <input name="slug" required defaultValue={editingCategory?.slug} className="input" />
-                </label>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block">
                   <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Кратко Име *</span>
                   <input name="shortName" required defaultValue={editingCategory?.shortName} className="input" />
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Изображение (Път) *</span>
-                  <input name="image" required defaultValue={editingCategory?.image} className="input" />
                 </label>
               </div>
 
