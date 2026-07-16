@@ -22,8 +22,8 @@ export default function ContactPage() {
             <Phone size={20} className="mt-0.5 text-ember" />
             <div>
               <p className="font-head text-sm uppercase tracking-wide text-bone">Телефон</p>
-              <a href="tel:+359888000000" className="text-bone-dim hover:text-ember">
-                +359 88 800 0000
+              <a href="tel:+359892342860" className="text-bone-dim hover:text-ember">
+                +359 89 2342860
               </a>
             </div>
           </div>
