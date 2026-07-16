@@ -1189,16 +1189,7 @@ export default function AdminDashboard({
                 <textarea name="description" rows={3} required defaultValue={editingCategory?.description} className="input resize-none" />
               </label>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Custom поръчка URL</span>
-                  <input name="customOrderHref" defaultValue={editingCategory?.customOrderHref} placeholder="/custom-order/print-on-demand" className="input" />
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Custom бутон текст</span>
-                  <input name="customOrderLabel" defaultValue={editingCategory?.customOrderLabel} placeholder="Поръчай custom дизайн" className="input" />
-                </label>
-              </div>
+
 
               <div className="flex gap-3 pt-4 border-t border-ink-line">
                 <button
