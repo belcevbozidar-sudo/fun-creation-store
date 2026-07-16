@@ -4,6 +4,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { convexClient } from "./convex-client";
 import { api } from "../../convex/_generated/api";
+import { sendNtfyNotification } from "./ntfy";
 
 const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
@@ -48,6 +49,15 @@ export async function submitOrder(input: OrderInput) {
       status: "нова",
       createdAt: new Date().toISOString(),
     });
+
+    // Send ntfy notification in background
+    const orderDetails = input.items.map(item => `${item.name} (${item.qty} бр. x ${item.price.toFixed(2)} €)`).join("\n");
+    const ntfyMessage = `Поръчка № ${id}\nКлиент: ${input.name}\nТелефон: ${input.phone}\nИмейл: ${input.email || 'няма'}\nГрад: ${input.city}\nАдрес: ${input.address}\n\nПродукти:\n${orderDetails}\n\nОбщо: ${input.total.toFixed(2)} €\nБележки: ${input.notes || 'няма'}`;
+    sendNtfyNotification("Нова Поръчка! 🛍️", ntfyMessage, {
+      tags: "shopping_bags,moneybag",
+      priority: "high",
+    }).catch(err => console.error("Error sending ntfy checkout alert:", err));
+
     return { ok: true as const, orderId: id };
   } catch (err: any) {
     console.error("Order submission error:", err);
@@ -94,6 +104,13 @@ export async function submitCustomOrder(formData: FormData) {
       createdAt: new Date().toISOString(),
     });
 
+    // Send ntfy notification in background
+    const ntfyMessage = `Заявка № ${id}\nТип: ${type}\nКлиент: ${name}\nТелефон: ${phone}\nИмейл: ${email || 'няма'}\n\nОписание: ${description}\nФайл: ${attachment || 'няма'}`;
+    sendNtfyNotification("Нова Индивидуална Заявка! 🎨", ntfyMessage, {
+      tags: "art,email",
+      priority: "default",
+    }).catch(err => console.error("Error sending ntfy custom order alert:", err));
+
     return { ok: true as const, requestId: id };
   } catch (err: any) {
     console.error("Custom order submission error:", err);
@@ -122,6 +139,14 @@ export async function submitContactMessage(input: ContactInput) {
       message: input.message,
       createdAt: new Date().toISOString(),
     });
+
+    // Send ntfy notification in background
+    const ntfyMessage = `Съобщение № ${id}\nПодател: ${input.name}\nИмейл: ${input.email || 'няма'}\n\nСъобщение:\n${input.message}`;
+    sendNtfyNotification("Ново Съобщение за Контакт! ✉️", ntfyMessage, {
+      tags: "speech_balloon,incoming_envelope",
+      priority: "default",
+    }).catch(err => console.error("Error sending ntfy contact message alert:", err));
+
     return { ok: true as const, messageId: id };
   } catch (err: any) {
     console.error("Contact submission error:", err);

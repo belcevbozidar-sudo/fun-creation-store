@@ -6,6 +6,7 @@ import path from "path";
 import { convexClient } from "@/lib/convex-client";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
+import { sendNtfyNotification } from "@/lib/ntfy";
 
 // Helper to check if user is authenticated
 export async function checkAdminAuth(): Promise<boolean> {
@@ -53,9 +54,9 @@ export async function adminLoginAction(prevState: any, formData: FormData) {
     // Generate secure session token
     const token = crypto.randomUUID();
     
-    // Remember me: 100 years. Otherwise: 2 hours.
+    // Remember me: 14 days (2 weeks). Otherwise: 2 hours.
     const durationMs = rememberMe 
-      ? 100 * 365 * 24 * 60 * 60 * 1000 
+      ? 14 * 24 * 60 * 60 * 1000 
       : 2 * 60 * 60 * 1000;
 
     await convexClient.mutation(api.auth.createSession, { token, durationMs });
@@ -66,14 +67,28 @@ export async function adminLoginAction(prevState: any, formData: FormData) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: rememberMe ? 100 * 365 * 24 * 60 * 60 : undefined, // cookie expires at browser close if not rememberMe
+      maxAge: rememberMe ? 14 * 24 * 60 * 60 : undefined, // cookie expires at browser close if not rememberMe
     });
+
+    // Notify ntfy on successful login
+    sendNtfyNotification("Успешен Вход в Админ Панела! 🟢", `Успешен вход от IP адрес: ${clientIp}\nЗапомни ме: ${rememberMe ? 'Да (14 дни)' : 'Не (2 часа)'}`, {
+      tags: "closed_lock_with_key,key",
+      priority: "default",
+    }).catch(err => console.error("Error sending login success alert:", err));
 
     return { success: true, error: null };
   } else {
     // Record failed attempt
     const failedStatus = await convexClient.mutation(api.auth.recordFailedAttempt, { ip: clientIp });
     const attemptsLeft = 3 - failedStatus.attempts;
+
+    // Send ntfy notification on failed attempt
+    const ntfyTitle = failedStatus.locked ? "Блокиран Админ Достъп! 🔒" : "Неуспешен опит за вход! ⚠️";
+    const ntfyMessage = `Неуспешен опит за вход от IP: ${clientIp}\nОпит: ${failedStatus.attempts}/3\nСтатус: ${failedStatus.locked ? 'БЛОКИРАН ЗА 1 ЧАС' : 'Невалидна парола'}`;
+    sendNtfyNotification(ntfyTitle, ntfyMessage, {
+      tags: failedStatus.locked ? "lock,warning" : "warning,key",
+      priority: failedStatus.locked ? "high" : "default",
+    }).catch(err => console.error("Error sending ntfy security alert:", err));
 
     if (failedStatus.locked) {
       return {

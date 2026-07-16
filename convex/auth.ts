@@ -22,7 +22,8 @@ export const checkLockout = query({
       };
     }
 
-    return { locked: false, attempts: record.attempts };
+    // Lockout has expired, return active attempts as 0
+    return { locked: false, attempts: 0 };
   },
 });
 
@@ -45,7 +46,13 @@ export const recordFailedAttempt = mutation({
       return { attempts: 1, locked: false };
     }
 
-    const newAttempts = record.attempts + 1;
+    // Reset attempts count if the lockout has expired
+    let currentAttempts = record.attempts;
+    if (record.lockoutUntil > 0 && record.lockoutUntil <= now) {
+      currentAttempts = 0;
+    }
+
+    const newAttempts = currentAttempts + 1;
     let lockoutUntil = 0;
     let locked = false;
 

@@ -413,14 +413,7 @@ export default function AdminDashboard({
         </button>
       </div>
 
-      {/* Warning Notice about soft delete */}
-      <div className="mb-8 flex items-start gap-3 rounded-sm border border-spark/20 bg-spark/5 p-4 text-sm text-bone-dim">
-        <AlertTriangle className="shrink-0 mt-0.5 text-spark" size={18} />
-        <div>
-          <span className="font-bold text-bone">Защита от изтриване (Soft Delete): </span>
-          Всички изтрити от този панел продукти, категории, поръчки и съобщения се скриват веднага от сайта и панела, но се запазват в базата данни на Convex. Дори и хакер да влезе в панела, той не може да изтрие окончателно съдържанието.
-        </div>
-      </div>
+
 
       {/* Navigation tabs */}
       <div className="mb-8 flex flex-wrap gap-2 border-b border-ink-line pb-4 font-head text-sm uppercase tracking-wider">
