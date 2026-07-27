@@ -143,39 +143,31 @@ function slugify(text: string): string {
    PRODUCTS CRUD ACTIONS
    ========================================================================= */
 
-export async function uploadFileAction(formData: FormData) {
+// Files are uploaded from the browser straight to Convex file storage:
+// server action bodies are capped at 1MB (and Vercel requests at ~4.5MB),
+// so the file itself must never pass through the server.
+export async function getUploadUrlAction() {
   if (!(await checkAdminAuth())) throw new Error("Unauthorized");
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    return { success: false, error: "Няма прикачен файл." };
-  }
-
-  const MAX_FILE_SIZE = 15 * 1024 * 1024;
-  if (file.size > MAX_FILE_SIZE) {
-    return { success: false, error: "Файлът е твърде голям (макс. 15MB)." };
-  }
-
   try {
-    // Vercel's filesystem is read-only, so files are stored in Convex file storage
     const uploadUrl = await convexClient.mutation(api.files.generateUploadUrl, {});
+    return { success: true as const, uploadUrl };
+  } catch (err: any) {
+    console.error("Upload URL error:", err);
+    return { success: false as const, error: "Грешка при подготовка на качването." };
+  }
+}
 
-    const uploadRes = await fetch(uploadUrl, {
-      method: "POST",
-      headers: { "Content-Type": file.type || "application/octet-stream" },
-      body: file,
+export async function finalizeUploadAction(storageId: string) {
+  if (!(await checkAdminAuth())) throw new Error("Unauthorized");
+  try {
+    const url = await convexClient.mutation(api.files.getFileUrl, {
+      storageId: storageId as Id<"_storage">,
     });
-    if (!uploadRes.ok) {
-      throw new Error(`Convex upload failed: ${uploadRes.status}`);
-    }
-
-    const { storageId } = (await uploadRes.json()) as { storageId: Id<"_storage"> };
-    const url = await convexClient.mutation(api.files.getFileUrl, { storageId });
     if (!url) throw new Error("Could not resolve file URL");
-
-    return { success: true, url };
+    return { success: true as const, url };
   } catch (err: any) {
     console.error("File upload error:", err);
-    return { success: false, error: "Грешка при запис на файла." };
+    return { success: false as const, error: "Грешка при запис на файла." };
   }
 }
 

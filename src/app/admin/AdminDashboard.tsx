@@ -12,9 +12,36 @@ import {
   updateOrderStatusAction, deleteOrderAction,
   updateCustomOrderStatusAction, deleteCustomOrderAction,
   deleteMessageAction,
-  uploadFileAction,
+  getUploadUrlAction, finalizeUploadAction,
   updateProductsOrderAction
 } from "./actions";
+
+// Upload the file from the browser straight to Convex file storage —
+// server actions can't carry the file body (1MB limit on Vercel).
+async function uploadFileToStorage(
+  file: File
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  const MAX_FILE_SIZE = 15 * 1024 * 1024;
+  if (file.size === 0) return { success: false, error: "Няма прикачен файл." };
+  if (file.size > MAX_FILE_SIZE) {
+    return { success: false, error: "Файлът е твърде голям (макс. 15MB)." };
+  }
+
+  const urlRes = await getUploadUrlAction();
+  if (!urlRes.success) return { success: false, error: urlRes.error };
+
+  const uploadRes = await fetch(urlRes.uploadUrl, {
+    method: "POST",
+    headers: { "Content-Type": file.type || "application/octet-stream" },
+    body: file,
+  });
+  if (!uploadRes.ok) {
+    return { success: false, error: "Грешка при запис на файла." };
+  }
+
+  const { storageId } = (await uploadRes.json()) as { storageId: string };
+  return await finalizeUploadAction(storageId);
+}
 
 type Variant = {
   label: string;
@@ -160,11 +187,9 @@ export default function AdminDashboard({
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const formData = new FormData();
-      formData.append("file", file);
 
       try {
-        const res = await uploadFileAction(formData);
+        const res = await uploadFileToStorage(file);
         if (res.success && res.url) {
           newUrls.push(res.url);
         } else {
@@ -187,11 +212,9 @@ export default function AdminDashboard({
     if (!file) return;
 
     setUploadingCategory(true);
-    const formData = new FormData();
-    formData.append("file", file);
 
     try {
-      const res = await uploadFileAction(formData);
+      const res = await uploadFileToStorage(file);
       if (res.success && res.url) {
         setUploadedCategoryImage(res.url);
       } else {
