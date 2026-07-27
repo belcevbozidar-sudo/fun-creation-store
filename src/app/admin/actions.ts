@@ -1,8 +1,6 @@
 "use server";
 
 import { cookies, headers } from "next/headers";
-import { promises as fs } from "fs";
-import path from "path";
 import { convexClient } from "@/lib/convex-client";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -158,17 +156,23 @@ export async function uploadFileAction(formData: FormData) {
   }
 
   try {
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    await fs.mkdir(uploadsDir, { recursive: true });
-    
-    const id = crypto.randomUUID().slice(0, 8).toUpperCase();
-    const ext = path.extname(file.name) || "";
-    const filename = `${id}${ext}`;
-    
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await fs.writeFile(path.join(uploadsDir, filename), buffer);
-    
-    return { success: true, url: `/uploads/${filename}` };
+    // Vercel's filesystem is read-only, so files are stored in Convex file storage
+    const uploadUrl = await convexClient.mutation(api.files.generateUploadUrl, {});
+
+    const uploadRes = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    });
+    if (!uploadRes.ok) {
+      throw new Error(`Convex upload failed: ${uploadRes.status}`);
+    }
+
+    const { storageId } = (await uploadRes.json()) as { storageId: Id<"_storage"> };
+    const url = await convexClient.mutation(api.files.getFileUrl, { storageId });
+    if (!url) throw new Error("Could not resolve file URL");
+
+    return { success: true, url };
   } catch (err: any) {
     console.error("File upload error:", err);
     return { success: false, error: "Грешка при запис на файла." };

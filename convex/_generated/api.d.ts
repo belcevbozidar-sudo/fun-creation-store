@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as categories from "../categories.js";
 import type * as contact_messages from "../contact_messages.js";
 import type * as custom_orders from "../custom_orders.js";
+import type * as files from "../files.js";
 import type * as orders from "../orders.js";
 import type * as products from "../products.js";
 import type * as seed from "../seed.js";
@@ -27,6 +28,7 @@ declare const fullApi: ApiFromModules<{
   categories: typeof categories;
   contact_messages: typeof contact_messages;
   custom_orders: typeof custom_orders;
+  files: typeof files;
   orders: typeof orders;
   products: typeof products;
   seed: typeof seed;
