@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies, headers } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { convexClient } from "@/lib/convex-client";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -171,6 +172,13 @@ export async function finalizeUploadAction(storageId: string) {
   }
 }
 
+// The public pages (/, /category/[slug], /product/[slug]) are statically
+// generated, so every product/category change must purge that cache —
+// otherwise the site keeps serving the HTML from the last deploy.
+function revalidateSite() {
+  revalidatePath("/", "layout");
+}
+
 export async function updateProductsOrderAction(orderedIds: string[]) {
   if (!(await checkAdminAuth())) throw new Error("Unauthorized");
 
@@ -182,6 +190,7 @@ export async function updateProductsOrderAction(orderedIds: string[]) {
         orderIndex: i,
       });
     }
+    revalidateSite();
     return { success: true };
   } catch (err: any) {
     console.error("Error updating order:", err);
@@ -245,6 +254,7 @@ export async function addProductAction(formData: FormData) {
     orderIndex,
   });
 
+  revalidateSite();
   return { success: true };
 }
 
@@ -304,12 +314,14 @@ export async function updateProductAction(id: string, formData: FormData) {
     orderIndex,
   });
 
+  revalidateSite();
   return { success: true };
 }
 
 export async function deleteProductAction(id: string) {
   if (!(await checkAdminAuth())) throw new Error("Unauthorized");
   await convexClient.mutation(api.products.softDelete, { id: id as Id<"products"> });
+  revalidateSite();
   return { success: true };
 }
 
@@ -342,6 +354,7 @@ export async function addCategoryAction(formData: FormData) {
     customOrderLabel,
   });
 
+  revalidateSite();
   return { success: true };
 }
 
@@ -371,12 +384,14 @@ export async function updateCategoryAction(id: string, formData: FormData) {
     customOrderLabel,
   });
 
+  revalidateSite();
   return { success: true };
 }
 
 export async function deleteCategoryAction(id: string) {
   if (!(await checkAdminAuth())) throw new Error("Unauthorized");
   await convexClient.mutation(api.categories.softDelete, { id: id as Id<"categories"> });
+  revalidateSite();
   return { success: true };
 }
 
