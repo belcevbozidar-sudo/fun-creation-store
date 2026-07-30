@@ -69,7 +69,6 @@ type Category = {
   _id: string;
   slug: string;
   name: string;
-  shortName: string;
   tagline: string;
   description: string;
   image: string;
@@ -659,7 +658,6 @@ export default function AdminDashboard({
                 <thead>
                   <tr className="border-b border-ink-line font-head text-xs uppercase tracking-wider text-bone">
                     <th className="pb-3 pl-2">Име / Slug</th>
-                    <th className="pb-3">Кратко Име</th>
                     <th className="pb-3">Слоган</th>
                     <th className="pb-3 text-right pr-2">Действия</th>
                   </tr>
@@ -671,7 +669,6 @@ export default function AdminDashboard({
                         <div>{cat.name}</div>
                         <div className="font-mono text-xs font-normal text-bone-dim/60">/{cat.slug}</div>
                       </td>
-                      <td className="py-4">{cat.shortName}</td>
                       <td className="py-4 italic text-bone-dim/80">{cat.tagline}</td>
                       <td className="py-4 text-right pr-2">
                         <div className="flex justify-end gap-2">
@@ -1016,7 +1013,7 @@ export default function AdminDashboard({
                   <select name="category" defaultValue={editingProduct?.category} className="input">
                     {categories.map((c) => (
                       <option key={c.slug} value={c.slug}>
-                        {c.shortName}
+                        {c.name}
                       </option>
                     ))}
                   </select>
@@ -1191,16 +1188,10 @@ export default function AdminDashboard({
                 <input type="hidden" name="image" required value={uploadedCategoryImage} />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Име *</span>
-                  <input name="name" required defaultValue={editingCategory?.name} className="input" />
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Кратко Име *</span>
-                  <input name="shortName" required defaultValue={editingCategory?.shortName} className="input" />
-                </label>
-              </div>
+              <label className="block">
+                <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Име *</span>
+                <input name="name" required defaultValue={editingCategory?.name} className="input" />
+              </label>
 
               <label className="block">
                 <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Слоган (Tagline) *</span>

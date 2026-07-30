@@ -5,7 +5,7 @@ export default defineSchema({
   categories: defineTable({
     slug: v.string(),
     name: v.string(),
-    shortName: v.string(),
+    shortName: v.optional(v.string()),
     tagline: v.string(),
     description: v.string(),
     image: v.string(),

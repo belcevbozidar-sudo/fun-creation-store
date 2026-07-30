@@ -23,7 +23,6 @@ export type Product = {
 export type Category = {
   slug: CategorySlug;
   name: string;
-  shortName: string;
   tagline: string;
   description: string;
   image: string;

@@ -39,7 +39,7 @@ export default function Header() {
                 href={`/category/${c.slug}`}
                 className="transition-colors hover:text-ember"
               >
-                {c.shortName}
+                {c.name}
               </Link>
             ))}
             <Link href="/contact" className="transition-colors hover:text-ember">
@@ -82,7 +82,7 @@ export default function Header() {
                     onClick={() => setMenuOpen(false)}
                     className="block rounded-sm px-2 py-3 text-bone transition-colors hover:bg-ink-card hover:text-ember"
                   >
-                    {c.shortName}
+                    {c.name}
                   </Link>
                 </li>
               ))}

@@ -31,7 +31,6 @@ export const add = mutation({
   args: {
     slug: v.string(),
     name: v.string(),
-    shortName: v.string(),
     tagline: v.string(),
     description: v.string(),
     image: v.string(),
@@ -52,7 +51,6 @@ export const update = mutation({
     id: v.id("categories"),
     slug: v.string(),
     name: v.string(),
-    shortName: v.string(),
     tagline: v.string(),
     description: v.string(),
     image: v.string(),

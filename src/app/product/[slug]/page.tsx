@@ -52,7 +52,7 @@ export default async function ProductPage({
         </Link>
         <ChevronRight size={14} />
         <Link href={`/category/${product.category}`} className="hover:text-ember">
-          {category?.shortName}
+          {category?.name}
         </Link>
         <ChevronRight size={14} />
         <span className="text-bone">{product.name}</span>
@@ -102,7 +102,7 @@ export default async function ProductPage({
       {related.length > 0 && (
         <section className="mt-16">
           <h2 className="font-display mb-6 text-2xl text-bone sm:text-3xl">
-            Още от {category?.shortName}
+            Още от {category?.name}
           </h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {related.map((p) => (

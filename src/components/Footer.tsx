@@ -50,7 +50,7 @@ export default function Footer() {
             {categories.map((c) => (
               <li key={c.slug}>
                 <Link href={`/category/${c.slug}`} className="hover:text-ember">
-                  {c.shortName}
+                  {c.name}
                 </Link>
               </li>
             ))}

@@ -333,7 +333,6 @@ export async function addCategoryAction(formData: FormData) {
   if (!(await checkAdminAuth())) throw new Error("Unauthorized");
 
   const name = formData.get("name")?.toString() || "";
-  const shortName = formData.get("shortName")?.toString() || "";
   const tagline = formData.get("tagline")?.toString() || "";
   const description = formData.get("description")?.toString() || "";
   const image = formData.get("image")?.toString() || "";
@@ -346,7 +345,6 @@ export async function addCategoryAction(formData: FormData) {
   await convexClient.mutation(api.categories.add, {
     slug,
     name,
-    shortName,
     tagline,
     description,
     image,
@@ -362,7 +360,6 @@ export async function updateCategoryAction(id: string, formData: FormData) {
   if (!(await checkAdminAuth())) throw new Error("Unauthorized");
 
   const name = formData.get("name")?.toString() || "";
-  const shortName = formData.get("shortName")?.toString() || "";
   const tagline = formData.get("tagline")?.toString() || "";
   const description = formData.get("description")?.toString() || "";
   const image = formData.get("image")?.toString() || "";
@@ -376,7 +373,6 @@ export async function updateCategoryAction(id: string, formData: FormData) {
     id: id as Id<"categories">,
     slug,
     name,
-    shortName,
     tagline,
     description,
     image,
