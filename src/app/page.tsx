@@ -42,7 +42,7 @@ export default async function Home() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
-              href="/category/vazrozhdenci"
+              href="/products"
               className="rounded-sm bg-ember px-6 py-3.5 text-center font-head text-sm uppercase tracking-wider text-bone transition-colors hover:bg-ember-dark"
             >
               Разгледай тениските

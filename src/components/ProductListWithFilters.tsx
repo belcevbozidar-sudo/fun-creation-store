@@ -7,24 +7,26 @@ import ProductCard from "@/components/ProductCard";
 
 type Props = {
   products: Product[];
-  categorySlug: string;
+  categorySlug?: string;
+  // When provided, the filter chips become category filters (used on the
+  // all-products catalog page) instead of the per-category sub-filters.
+  categories?: { slug: string; name: string }[];
 };
 
-export default function ProductListWithFilters({ products, categorySlug }: Props) {
+export default function ProductListWithFilters({ products, categorySlug = "", categories }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [sortBy, setSortBy] = useState("default"); // default, price-asc, price-desc
 
   // Context-aware filter options based on category
   const filterOptions = useMemo(() => {
+    if (categories) {
+      return [
+        { value: "all", label: "Всички" },
+        ...categories.map((c) => ({ value: c.slug, label: c.name })),
+      ];
+    }
     switch (categorySlug) {
-      case "vazrozhdenci":
-        return [
-          { value: "all", label: "Всички" },
-          { value: "artists", label: "Художници" },
-          { value: "revolutionaries", label: "Възрожденци" },
-          { value: "tsars", label: "Царе" },
-        ];
       case "print-on-demand":
         return [
           { value: "all", label: "Всички" },
@@ -56,11 +58,8 @@ export default function ProductListWithFilters({ products, categorySlug }: Props
   const matchesSubFilter = (product: Product, filter: string) => {
     if (filter === "all") return true;
 
-    if (categorySlug === "vazrozhdenci") {
-      const slug = product.slug.toLowerCase();
-      if (filter === "artists") return slug.includes("zograf") || slug.includes("maistora");
-      if (filter === "revolutionaries") return slug.includes("levski") || slug.includes("botev") || slug.includes("vazov");
-      if (filter === "tsars") return slug.includes("car");
+    if (categories) {
+      return product.category === filter;
     }
 
     if (categorySlug === "print-on-demand") {
