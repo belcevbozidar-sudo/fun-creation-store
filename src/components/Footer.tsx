@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Mail, Phone } from "lucide-react";
-import { categories } from "@/lib/categories";
+import { Category } from "@/lib/types";
 
 function InstagramIcon({ size = 17 }: { size?: number }) {
   return (
@@ -21,7 +21,7 @@ function FacebookIcon({ size = 17 }: { size?: number }) {
   );
 }
 
-export default function Footer() {
+export default function Footer({ categories }: { categories: Category[] }) {
   return (
     <footer className="border-t border-ink-line bg-ink-soft">
       <div className="spark-line" />

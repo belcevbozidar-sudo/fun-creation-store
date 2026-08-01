@@ -4,11 +4,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import ProductListWithFilters from "@/components/ProductListWithFilters";
-import { categories } from "@/lib/categories";
+import { getCategories } from "@/lib/categories";
 import { convexClient } from "@/lib/convex-client";
 import { api } from "../../../../convex/_generated/api";
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const categories = await getCategories();
   return categories.map((c) => ({ slug: c.slug }));
 }
 
@@ -40,13 +41,17 @@ export default async function CategoryPage({
   return (
     <div>
       <section className="relative flex min-h-[42vh] items-center overflow-hidden sm:min-h-[48vh]">
-        <Image
-          src={category.image}
-          alt=""
-          fill
-          priority
-          className="object-cover"
-        />
+        {category.image ? (
+          <Image
+            src={category.image}
+            alt=""
+            fill
+            priority
+            className="object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-ink-card" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/75 to-ink/40" />
         <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
           <span className="font-head text-xs uppercase tracking-[0.25em] text-spark">

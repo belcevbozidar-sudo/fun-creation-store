@@ -1,4 +1,4 @@
-export type CategorySlug = "vazrozhdenci" | "print-on-demand" | "broderii" | "3d-printeri";
+export type CategorySlug = string;
 
 export type Variant = {
   label: string;

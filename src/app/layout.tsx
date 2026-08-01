@@ -3,6 +3,7 @@ import { Stalinist_One, Oswald, Inter } from "next/font/google";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { CartProvider } from "@/lib/cart-context";
+import { getCategories } from "@/lib/categories";
 import "./globals.css";
 
 const stalinistOne = Stalinist_One({
@@ -40,11 +41,13 @@ export const viewport: Viewport = {
   themeColor: "#0a0a0b",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const categories = await getCategories();
+
   return (
     <html
       lang="bg"
@@ -52,9 +55,9 @@ export default function RootLayout({
     >
       <body className="bg-grit min-h-full flex flex-col">
         <CartProvider>
-          <Header />
+          <Header categories={categories} />
           <main className="flex-1">{children}</main>
-          <Footer />
+          <Footer categories={categories} />
         </CartProvider>
       </body>
     </html>

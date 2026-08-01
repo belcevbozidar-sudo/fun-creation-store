@@ -6,9 +6,9 @@ import Image from "next/image";
 import { Menu, X, ShoppingCart } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import CartDrawer from "@/components/CartDrawer";
-import { categories } from "@/lib/categories";
+import { Category } from "@/lib/types";
 
-export default function Header() {
+export default function Header({ categories }: { categories: Category[] }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { totalItems, openCart } = useCart();
 
