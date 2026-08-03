@@ -131,7 +131,7 @@ export default function CartDrawer() {
                 Завърши поръчката
               </Link>
               <p className="text-center text-xs text-bone-dim">
-                Без онлайн плащане — потвърждаваме поръчката лично с теб.
+                Без онлайн плащане - потвърждаваме поръчката лично с теб.
               </p>
             </div>
           </>

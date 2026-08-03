@@ -3,6 +3,7 @@ export type CategorySlug = string;
 export type Variant = {
   label: string;
   options: string[];
+  optionImages?: { option: string; image: string }[];
 };
 
 export type Product = {

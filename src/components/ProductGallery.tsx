@@ -7,14 +7,18 @@ type Props = {
   gallery: string[];
   name: string;
   badge?: string;
+  // When set (e.g. a variant option has its own photo), only this image is
+  // shown and the multi-image slider is hidden — the photo is tied to the
+  // selected option, not part of the generic gallery.
+  overrideImage?: string;
 };
 
-export default function ProductGallery({ gallery, name, badge }: Props) {
+export default function ProductGallery({ gallery, name, badge, overrideImage }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
-  
+
   // Safeguard if gallery is empty or undefined
   const images = gallery && gallery.length > 0 ? gallery : ["/images/products/placeholder.png"];
-  const activeImage = images[activeIndex] || images[0];
+  const activeImage = overrideImage || images[activeIndex] || images[0];
 
   return (
     <div className="flex flex-col gap-4">
@@ -36,7 +40,7 @@ export default function ProductGallery({ gallery, name, badge }: Props) {
       </div>
 
       {/* Thumbnails Row */}
-      {images.length > 1 && (
+      {!overrideImage && images.length > 1 && (
         <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">
           {images.map((url, idx) => (
             <button

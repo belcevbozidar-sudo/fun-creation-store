@@ -5,9 +5,9 @@ import { convexClient } from "@/lib/convex-client";
 import { api } from "../../../convex/_generated/api";
 
 export const metadata: Metadata = {
-  title: "Всички продукти — FUN CREATION",
+  title: "Всички продукти - FUN CREATION",
   description:
-    "Разгледай целия каталог на FUN CREATION — тениски, бродерии, принт он демонд и 3D печат. Филтрирай по категория и намери своя модел.",
+    "Разгледай целия каталог на FUN CREATION - тениски, бродерии, принт он демонд и 3D печат. Филтрирай по категория и намери своя модел.",
 };
 
 export default async function ProductsPage() {

@@ -3,8 +3,8 @@ import Image from "next/image";
 import CustomOrderForm from "@/components/CustomOrderForm";
 
 export const metadata: Metadata = {
-  title: "Custom 3D Печат — FUN CREATION",
-  description: "Поръчай 3D печат по проект — резервна част, прототип или оригинална идея.",
+  title: "Custom 3D Печат - FUN CREATION",
+  description: "Поръчай 3D печат по проект - резервна част, прототип или оригинална идея.",
 };
 
 export default function ThreeDCustomOrderPage() {
@@ -25,15 +25,15 @@ export default function ThreeDCustomOrderPage() {
             Custom 3D Печат по Проект
           </h1>
           <p className="mt-3 text-bone-dim">
-            Ако можеш да го нарисуваш или опишеш, можем да го отпечатаме —
+            Ако можеш да го нарисуваш или опишеш, можем да го отпечатаме -
             резервна част, прототип, сценичен аксесоар, декорация или изцяло
             оригинална идея. Прикачи готов 3D файл (STL/OBJ) или просто опиши
-            какво ти трябва — ние ще го моделираме.
+            какво ти трябва - ние ще го моделираме.
           </p>
           <ul className="mt-5 space-y-2 text-sm text-bone-dim">
             <li>• Материали: PLA, PETG, ABS, TPU и др.</li>
             <li>• Получаваш оферта с цена и срок преди печат</li>
-            <li>• Срок за изпълнение: 3–7 работни дни</li>
+            <li>• Срок за изпълнение: 3-7 работни дни</li>
           </ul>
         </div>
 

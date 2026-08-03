@@ -115,7 +115,7 @@ export default function CustomOrderForm({
 
       <label className="block">
         <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">
-          Файл — лого, скица, снимка или 3D модел (опционално)
+          Файл - лого, скица, снимка или 3D модел (опционално)
         </span>
         <div className="flex items-center gap-3">
           <label className="flex cursor-pointer items-center gap-2 rounded-sm border border-dashed border-ink-line px-4 py-3 text-sm text-bone-dim hover:border-ember hover:text-ember">

@@ -3,7 +3,7 @@ import { Mail, MapPin, Phone } from "lucide-react";
 import ContactForm from "@/components/ContactForm";
 
 export const metadata: Metadata = {
-  title: "Контакти — FUN CREATION",
+  title: "Контакти - FUN CREATION",
   description: "Свържи се с FUN CREATION за поръчки, въпроси и custom проекти.",
 };
 
@@ -13,7 +13,7 @@ export default function ContactPage() {
       <h1 className="font-display text-3xl text-bone sm:text-4xl">Контакти</h1>
       <p className="mt-2 max-w-xl text-bone-dim">
         Въпроси за поръчка, custom проект или просто искаш да поговорим за
-        рокендрол и 3D печат — пиши ни.
+        рокендрол и 3D печат - пиши ни.
       </p>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_1.2fr]">

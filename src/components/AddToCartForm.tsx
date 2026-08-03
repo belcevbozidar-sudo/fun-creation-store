@@ -5,11 +5,14 @@ import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { Product } from "@/lib/types";
 
-export default function AddToCartForm({ product }: { product: Product }) {
+type Props = {
+  product: Product;
+  selected: Record<string, string>;
+  onSelectedChange: (selected: Record<string, string>) => void;
+};
+
+export default function AddToCartForm({ product, selected, onSelectedChange }: Props) {
   const { addItem } = useCart();
-  const [selected, setSelected] = useState<Record<string, string>>(() =>
-    Object.fromEntries(product.variants.map((v) => [v.label, v.options[0]]))
-  );
   const [qty, setQty] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
 
@@ -54,7 +57,7 @@ export default function AddToCartForm({ product }: { product: Product }) {
                 key={option}
                 type="button"
                 onClick={() =>
-                  setSelected((prev) => ({ ...prev, [variant.label]: option }))
+                  onSelectedChange({ ...selected, [variant.label]: option })
                 }
                 className={`rounded-sm border px-4 py-2 text-sm font-head uppercase tracking-wide transition-colors ${
                   selected[variant.label] === option

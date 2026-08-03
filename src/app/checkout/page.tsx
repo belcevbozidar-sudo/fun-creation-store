@@ -68,7 +68,7 @@ export default function CheckoutPage() {
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
       <h1 className="font-display text-3xl text-bone sm:text-4xl">Завършване на поръчка</h1>
       <p className="mt-2 text-bone-dim">
-        Без онлайн плащане — въвеждаш данни, ние се свързваме с теб за потвърждение
+        Без онлайн плащане - въвеждаш данни, ние се свързваме с теб за потвърждение
         и начин на плащане (в брой при доставка / по банка).
       </p>
 

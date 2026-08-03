@@ -22,7 +22,7 @@ export async function generateMetadata({
   const category = await convexClient.query(api.categories.getBySlug, { slug });
   if (!category) return {};
   return {
-    title: `${category.name} — FUN CREATION`,
+    title: `${category.name} - FUN CREATION`,
     description: category.description,
   };
 }
@@ -78,11 +78,15 @@ export default async function CategoryPage({
               <p className="mt-2 max-w-xl text-bone-dim">
                 {category.slug === "3d-printeri"
                   ? "Пращаш ни своя 3D модел или описание, ние оценяваме и печатаме по твоите изисквания."
-                  : "Пращаш ни лого, идея или скица — ние я превръщаме в готов продукт."}
+                  : "Пращаш ни лого, идея или скица - ние я превръщаме в готов продукт."}
               </p>
             </div>
             <Link
-              href={category.customOrderHref}
+              href={
+                category.slug === "print-on-demand"
+                  ? "https://fun-creation-store.vercel.app/custom-order/print-on-demand"
+                  : category.customOrderHref
+              }
               className="inline-flex shrink-0 items-center gap-2 rounded-sm bg-ember px-5 py-3 font-head text-sm uppercase tracking-wider text-bone transition-colors hover:bg-ember-dark"
             >
               {category.customOrderLabel} <ArrowRight size={16} />

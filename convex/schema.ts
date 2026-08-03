@@ -28,6 +28,9 @@ export default defineSchema({
       v.object({
         label: v.string(),
         options: v.array(v.string()),
+        optionImages: v.optional(
+          v.array(v.object({ option: v.string(), image: v.string() }))
+        ),
       })
     ),
     badge: v.optional(v.string()),

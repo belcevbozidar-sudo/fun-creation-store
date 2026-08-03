@@ -46,7 +46,28 @@ async function uploadFileToStorage(
 type Variant = {
   label: string;
   options: string[];
+  optionImages?: { option: string; image: string }[];
 };
+
+type VariantOptionDraft = { name: string; image: string };
+type VariantGroupDraft = { label: string; options: VariantOptionDraft[] };
+
+const DEFAULT_VARIANT_GROUPS: VariantGroupDraft[] = [
+  {
+    label: "Размер",
+    options: ["S", "M", "L", "XL", "XXL"].map((name) => ({ name, image: "" })),
+  },
+];
+
+function toVariantGroupDrafts(variants: Variant[]): VariantGroupDraft[] {
+  return (variants || []).map((v) => ({
+    label: v.label,
+    options: v.options.map((opt) => ({
+      name: opt,
+      image: v.optionImages?.find((oi) => oi.option === opt)?.image || "",
+    })),
+  }));
+}
 
 type Product = {
   _id: string;
@@ -155,6 +176,10 @@ export default function AdminDashboard({
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
 
+  // Structured Variant Editor State (each option can carry its own photo)
+  const [variantGroups, setVariantGroups] = useState<VariantGroupDraft[]>(DEFAULT_VARIANT_GROUPS);
+  const [uploadingOptionImage, setUploadingOptionImage] = useState<string | null>(null);
+
   // Premium Category Image Uploading State
   const [uploadedCategoryImage, setUploadedCategoryImage] = useState<string>("");
   const [uploadingCategory, setUploadingCategory] = useState(false);
@@ -224,6 +249,79 @@ export default function AdminDashboard({
       alert(`Възникна грешка при качване на ${file.name}`);
     } finally {
       setUploadingCategory(false);
+      e.target.value = ""; // Clear file input
+    }
+  }
+
+  // Structured variant editor handlers
+  function addVariantGroup() {
+    setVariantGroups((gs) => [...gs, { label: "", options: [{ name: "", image: "" }] }]);
+  }
+
+  function removeVariantGroup(gi: number) {
+    setVariantGroups((gs) => gs.filter((_, i) => i !== gi));
+  }
+
+  function updateVariantGroupLabel(gi: number, label: string) {
+    setVariantGroups((gs) => gs.map((g, i) => (i === gi ? { ...g, label } : g)));
+  }
+
+  function addVariantOption(gi: number) {
+    setVariantGroups((gs) =>
+      gs.map((g, i) => (i === gi ? { ...g, options: [...g.options, { name: "", image: "" }] } : g))
+    );
+  }
+
+  function removeVariantOption(gi: number, oi: number) {
+    setVariantGroups((gs) =>
+      gs.map((g, i) => (i === gi ? { ...g, options: g.options.filter((_, j) => j !== oi) } : g))
+    );
+  }
+
+  function updateVariantOptionName(gi: number, oi: number, name: string) {
+    setVariantGroups((gs) =>
+      gs.map((g, i) =>
+        i === gi ? { ...g, options: g.options.map((o, j) => (j === oi ? { ...o, name } : o)) } : g
+      )
+    );
+  }
+
+  function removeVariantOptionImage(gi: number, oi: number) {
+    setVariantGroups((gs) =>
+      gs.map((g, i) =>
+        i === gi ? { ...g, options: g.options.map((o, j) => (j === oi ? { ...o, image: "" } : o)) } : g
+      )
+    );
+  }
+
+  async function handleVariantOptionImageUpload(
+    gi: number,
+    oi: number,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const key = `${gi}-${oi}`;
+    setUploadingOptionImage(key);
+
+    try {
+      const res = await uploadFileToStorage(file);
+      if (res.success && res.url) {
+        const url = res.url;
+        setVariantGroups((gs) =>
+          gs.map((g, i) =>
+            i === gi ? { ...g, options: g.options.map((o, j) => (j === oi ? { ...o, image: url } : o)) } : g
+          )
+        );
+      } else {
+        alert(`Грешка при качване на снимка: ${res.error}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Възникна грешка при качване на снимката");
+    } finally {
+      setUploadingOptionImage(null);
       e.target.value = ""; // Clear file input
     }
   }
@@ -328,32 +426,6 @@ export default function AdminDashboard({
     await updateProductsOrderAction(sortedList.map((item) => item._id));
   }
 
-  // Parse variants textarea to array: Label: Option1, Option2
-  function parseVariants(text: string): Variant[] {
-    return text
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const parts = line.split(":");
-        if (parts.length < 2) return null;
-        const label = parts[0].trim();
-        const options = parts[1]
-          .split(",")
-          .map((o) => o.trim())
-          .filter(Boolean);
-        return { label, options };
-      })
-      .filter((v): v is Variant => v !== null);
-  }
-
-  // Format variants array back to textarea format
-  function formatVariants(variantsList: Variant[]): string {
-    return (variantsList || [])
-      .map((v) => `${v.label}: ${v.options.join(", ")}`)
-      .join("\n");
-  }
-
   // Delete product action
   async function handleDeleteProduct(id: string) {
     if (!confirm("Сигурни ли сте, че искате да изтриете този продукт? (Ще бъде скрит, но ще остане в базата данни за сигурност)")) return;
@@ -367,10 +439,17 @@ export default function AdminDashboard({
     const form = e.currentTarget;
     const formData = new FormData(form);
     
-    // Parse variants field
-    const rawVariants = formData.get("variants_text")?.toString() || "";
-    const parsed = parseVariants(rawVariants);
-    formData.set("variants", JSON.stringify(parsed));
+    // Build variants (with per-option images) from the structured editor state
+    const parsedVariants = variantGroups
+      .map((g) => ({
+        label: g.label.trim(),
+        options: g.options.map((o) => o.name.trim()).filter(Boolean),
+        optionImages: g.options
+          .filter((o) => o.name.trim() && o.image)
+          .map((o) => ({ option: o.name.trim(), image: o.image })),
+      }))
+      .filter((g) => g.label && g.options.length > 0);
+    formData.set("variants", JSON.stringify(parsedVariants));
 
     // Inject final sorted images array from state as JSON string
     formData.set("gallery", JSON.stringify(uploadedImages));
@@ -522,6 +601,7 @@ export default function AdminDashboard({
                 onClick={() => {
                   setIsAddingProduct(true);
                   setUploadedImages([]);
+                  setVariantGroups(DEFAULT_VARIANT_GROUPS);
                 }}
                 className="flex items-center gap-1.5 rounded-sm bg-ember px-4 py-2.5 font-head text-xs uppercase tracking-wider text-bone transition-colors hover:bg-ember-dark"
               >
@@ -607,6 +687,7 @@ export default function AdminDashboard({
                                     onClick={() => {
                                       setEditingProduct(product);
                                       setUploadedImages(product.gallery || (product.image ? [product.image] : []));
+                                      setVariantGroups(toVariantGroupDrafts(product.variants));
                                     }}
                                     className="flex h-8 w-8 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:border-spark hover:text-spark transition-colors"
                                     title="Редактирай"
@@ -1054,18 +1135,102 @@ export default function AdminDashboard({
                 />
               </label>
 
-              <label className="block">
-                <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">
-                  Варианти (Формат: Label: Option1, Option2, Option3)
+              <div className="space-y-3 rounded-sm border border-ink-line bg-ink p-4">
+                <span className="block font-head text-xs uppercase tracking-wider text-bone-dim">
+                  Варианти (напр. Размер, Лого на група - всяка опция може да има своя снимка)
                 </span>
-                <textarea 
-                  name="variants_text" 
-                  rows={3} 
-                  defaultValue={editingProduct ? formatVariants(editingProduct.variants) : "Размер: S, M, L, XL, XXL"} 
-                  placeholder="Размер: S, M, L, XL, XXL&#10;Цвят: Черна, Бяла"
-                  className="input resize-none" 
-                />
-              </label>
+
+                {variantGroups.map((group, gi) => (
+                  <div key={gi} className="space-y-3 rounded-sm border border-ink-line bg-ink-card p-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={group.label}
+                        onChange={(e) => updateVariantGroupLabel(gi, e.target.value)}
+                        placeholder="Напр. Лого на група"
+                        className="input flex-1"
+                      />
+                      {variantGroups.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeVariantGroup(gi)}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:border-ember hover:text-ember"
+                          title="Премахни групата"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      {group.options.map((option, oi) => {
+                        const key = `${gi}-${oi}`;
+                        return (
+                          <div key={oi} className="flex items-center gap-2">
+                            <label className="relative flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-sm border border-dashed border-ink-line bg-ink hover:border-ember">
+                              {option.image ? (
+                                <img src={option.image} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <span className="text-[9px] text-bone-dim/60">снимка</span>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleVariantOptionImageUpload(gi, oi, e)}
+                                className="hidden"
+                              />
+                            </label>
+                            <input
+                              value={option.name}
+                              onChange={(e) => updateVariantOptionName(gi, oi, e.target.value)}
+                              placeholder="Напр. Metallica"
+                              className="input flex-1"
+                            />
+                            {option.image && (
+                              <button
+                                type="button"
+                                onClick={() => removeVariantOptionImage(gi, oi)}
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:border-ember hover:text-ember"
+                                title="Премахни снимката"
+                              >
+                                <X size={14} />
+                              </button>
+                            )}
+                            {group.options.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeVariantOption(gi, oi)}
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-ink-line text-bone-dim hover:border-ember hover:text-ember"
+                                title="Премахни опцията"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                            {uploadingOptionImage === key && (
+                              <span className="text-xs text-spark animate-pulse font-mono">качване...</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => addVariantOption(gi)}
+                      className="flex items-center gap-1.5 font-head text-xs uppercase tracking-wider text-bone-dim hover:text-ember"
+                    >
+                      <Plus size={14} /> Опция
+                    </button>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addVariantGroup}
+                  className="flex items-center gap-1.5 font-head text-xs uppercase tracking-wider text-spark hover:text-ember"
+                >
+                  <Plus size={14} /> Нова група варианти
+                </button>
+              </div>
 
               <div className="flex items-center gap-2 cursor-pointer select-none pt-4">
                 <input

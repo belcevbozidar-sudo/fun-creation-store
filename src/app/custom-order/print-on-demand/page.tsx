@@ -3,7 +3,7 @@ import Image from "next/image";
 import CustomOrderForm from "@/components/CustomOrderForm";
 
 export const metadata: Metadata = {
-  title: "Custom Принт он Демонд — FUN CREATION",
+  title: "Custom Принт он Демонд - FUN CREATION",
   description: "Поръчай персонализиран печат на тениска, чаша, шапка или ключодържател.",
 };
 
@@ -26,14 +26,14 @@ export default function PodCustomOrderPage() {
           </h1>
           <p className="mt-3 text-bone-dim">
             Имаш лого на бандата, идея за клубна тениска, чаша или цяла серия
-            мърч? Разкажи ни накратко какво искаш — ние правим дигитален мокъп
+            мърч? Разкажи ни накратко какво искаш - ние правим дигитален мокъп
             за одобрение, преди да тръгне печатът. Без минимално количество за
             повечето артикули.
           </p>
           <ul className="mt-5 space-y-2 text-sm text-bone-dim">
             <li>• Тениски, чаши, шапки, бийни, ключодържатели и още</li>
-            <li>• Срок за изпълнение: 5–10 работни дни</li>
-            <li>• Плащане при доставка или по банка — без онлайн карта</li>
+            <li>• Срок за изпълнение: 5-10 работни дни</li>
+            <li>• Плащане при доставка или по банка - без онлайн карта</li>
           </ul>
         </div>
 

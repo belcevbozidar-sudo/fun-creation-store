@@ -25,7 +25,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "FUN CREATION — Тениски, Принт он Демонд и 3D Печат",
+  title: "FUN CREATION - Тениски, Принт он Демонд и 3D Печат",
   description:
     "FUN CREATION е онлайн магазин в рокендрол дух: тениски с Възрожденци, царе и художници, персонализиран принт он демонд (чаши, шапки, ключодържатели) и 3D печат на поръчка.",
   metadataBase: new URL(
