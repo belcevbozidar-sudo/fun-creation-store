@@ -8,6 +8,10 @@ import { getCategories } from "@/lib/categories";
 import { convexClient } from "@/lib/convex-client";
 import { api } from "../../../../convex/_generated/api";
 
+// Categories without their own dedicated custom-order page fall back to the
+// print-on-demand request form until a real page exists for them.
+const CATEGORIES_WITHOUT_CUSTOM_ORDER_PAGE = ["vazrozhdenci", "vazrozhdentsi", "balgarski-vladeteli"];
+
 export async function generateStaticParams() {
   const categories = await getCategories();
   return categories.map((c) => ({ slug: c.slug }));
@@ -85,6 +89,8 @@ export default async function CategoryPage({
               href={
                 category.slug === "print-on-demand"
                   ? "https://fun-creation-store.vercel.app/custom-order/print-on-demand"
+                  : CATEGORIES_WITHOUT_CUSTOM_ORDER_PAGE.includes(category.slug)
+                  ? "/custom-order/print-on-demand"
                   : category.customOrderHref
               }
               className="inline-flex shrink-0 items-center gap-2 rounded-sm bg-ember px-5 py-3 font-head text-sm uppercase tracking-wider text-bone transition-colors hover:bg-ember-dark"
