@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import ProductDetail from "@/components/ProductDetail";
 import { convexClient } from "@/lib/convex-client";
@@ -36,7 +36,7 @@ export default async function ProductPage({
   if (!product) notFound();
 
   const category = await convexClient.query(api.categories.getBySlug, { slug: product.category });
-  const related = await convexClient.query(api.products.getRelated, { slug, category: product.category, limit: 4 });
+  const related = await convexClient.query(api.products.getRelated, { slug, category: product.category, limit: 8 });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
@@ -63,6 +63,14 @@ export default async function ProductPage({
             {related.map((p) => (
               <ProductCard key={p.slug} product={p} />
             ))}
+          </div>
+          <div className="mt-8 flex justify-center">
+            <Link
+              href={`/category/${product.category}`}
+              className="inline-flex items-center gap-2 rounded-sm border border-ink-line px-6 py-3 font-head text-sm uppercase tracking-wider text-bone-dim transition-colors hover:border-ember hover:text-ember"
+            >
+              Виж всички <ArrowRight size={16} />
+            </Link>
           </div>
         </section>
       )}
