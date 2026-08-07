@@ -12,6 +12,7 @@ export default defineSchema({
     customOrderHref: v.optional(v.string()),
     customOrderLabel: v.optional(v.string()),
     deleted: v.optional(v.boolean()),
+    orderIndex: v.optional(v.number()), // For custom sorting from the admin panel
   }).index("by_slug", ["slug"]),
 
   products: defineTable({

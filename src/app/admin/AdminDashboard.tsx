@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { 
-  Package, FolderTree, ShoppingBag, Send, MessagesSquare, 
-  Trash2, Edit, Plus, LogOut, Check, X, FileDown, AlertTriangle 
+import { useState, useTransition, useRef, useMemo } from "react";
+import {
+  Package, FolderTree, ShoppingBag, Send, MessagesSquare,
+  Trash2, Edit, Plus, LogOut, Check, X, FileDown, AlertTriangle, Menu
 } from "lucide-react";
-import { 
+import {
   adminLogoutAction,
   addProductAction, updateProductAction, deleteProductAction,
   addCategoryAction, updateCategoryAction, deleteCategoryAction,
@@ -13,7 +13,7 @@ import {
   updateCustomOrderStatusAction, deleteCustomOrderAction,
   deleteMessageAction,
   getUploadUrlAction, finalizeUploadAction,
-  updateProductsOrderAction
+  updateProductsOrderAction, updateCategoriesOrderAction
 } from "./actions";
 
 // Upload the file from the browser straight to Convex file storage —
@@ -95,6 +95,7 @@ type Category = {
   image: string;
   customOrderHref?: string;
   customOrderLabel?: string;
+  orderIndex?: number;
 };
 
 type OrderItem = {
@@ -193,6 +194,57 @@ export default function AdminDashboard({
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [dragOverCat, setDragOverCat] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<"top" | "bottom" | null>(null);
+
+  // Drag and Drop States for Categories (List Table) — pointer-events based so it also works on touch/mobile
+  const [draggedCatIdx, setDraggedCatIdx] = useState<number | null>(null);
+  const [dragOverCatIdx, setDragOverCatIdx] = useState<number | null>(null);
+  const catRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)),
+    [categories]
+  );
+
+  function handleCatPointerDown(e: React.PointerEvent<HTMLElement>, index: number) {
+    e.preventDefault();
+    setDraggedCatIdx(index);
+    setDragOverCatIdx(index);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function handleCatPointerMove(e: React.PointerEvent<HTMLElement>) {
+    if (draggedCatIdx === null) return;
+    const y = e.clientY;
+    for (const cat of sortedCategories) {
+      const el = catRowRefs.current[cat._id];
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      if (y >= rect.top && y <= rect.bottom) {
+        const idx = sortedCategories.findIndex((c) => c._id === cat._id);
+        if (idx !== dragOverCatIdx) setDragOverCatIdx(idx);
+        break;
+      }
+    }
+  }
+
+  async function handleCatPointerUp(e: React.PointerEvent<HTMLElement>) {
+    if (draggedCatIdx === null) return;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    const targetIdx = dragOverCatIdx ?? draggedCatIdx;
+    setDraggedCatIdx(null);
+    setDragOverCatIdx(null);
+    if (targetIdx === draggedCatIdx) return;
+
+    const list = [...sortedCategories];
+    const [item] = list.splice(draggedCatIdx, 1);
+    list.splice(targetIdx, 0, item);
+    const reindexed = list.map((c, i) => ({ ...c, orderIndex: i }));
+    setCategories(reindexed);
+
+    await updateCategoriesOrderAction(reindexed.map((c) => c._id));
+  }
 
   const [isPending, startTransition] = useTransition();
 
@@ -610,7 +662,7 @@ export default function AdminDashboard({
             </div>
 
             {/* Display products grouped by category */}
-            {categories.map((cat) => {
+            {sortedCategories.map((cat) => {
               const catProducts = products
                 .filter((p) => p.category === cat.slug)
                 .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
@@ -738,15 +790,40 @@ export default function AdminDashboard({
               <table className="w-full border-collapse text-left text-sm text-bone-dim">
                 <thead>
                   <tr className="border-b border-ink-line font-head text-xs uppercase tracking-wider text-bone">
-                    <th className="pb-3 pl-2">Име / Slug</th>
+                    <th className="pb-3 pl-2 w-8"></th>
+                    <th className="pb-3">Име / Slug</th>
                     <th className="pb-3">Слоган</th>
                     <th className="pb-3 text-right pr-2">Действия</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {categories.map((cat) => (
-                    <tr key={cat._id} className="border-b border-ink-line/50 hover:bg-ink-soft/40 transition-colors">
-                      <td className="py-4 pl-2 font-bold text-bone">
+                  {sortedCategories.map((cat, idx) => (
+                    <tr
+                      key={cat._id}
+                      ref={(el) => {
+                        catRowRefs.current[cat._id] = el;
+                      }}
+                      className={`border-b border-ink-line/50 hover:bg-ink-soft/40 transition-colors ${
+                        draggedCatIdx === idx ? "opacity-40" : ""
+                      } ${
+                        dragOverCatIdx === idx && draggedCatIdx !== null && draggedCatIdx !== idx
+                          ? "border-t-2 border-t-ember"
+                          : ""
+                      }`}
+                    >
+                      <td className="py-4 pl-2 pr-1">
+                        <span
+                          onPointerDown={(e) => handleCatPointerDown(e, idx)}
+                          onPointerMove={handleCatPointerMove}
+                          onPointerUp={handleCatPointerUp}
+                          onPointerCancel={handleCatPointerUp}
+                          className="flex h-8 w-8 cursor-grab touch-none select-none items-center justify-center text-bone-dim/60 hover:text-bone active:cursor-grabbing"
+                          title="Плъзни, за да пренаредиш"
+                        >
+                          <Menu size={16} />
+                        </span>
+                      </td>
+                      <td className="py-4 font-bold text-bone">
                         <div>{cat.name}</div>
                         <div className="font-mono text-xs font-normal text-bone-dim/60">/{cat.slug}</div>
                       </td>
@@ -774,7 +851,7 @@ export default function AdminDashboard({
                       </td>
                     </tr>
                   ))}
-                  {categories.length === 0 && (
+                  {sortedCategories.length === 0 && (
                     <tr>
                       <td colSpan={4} className="py-8 text-center text-bone-dim">Няма намерени категории.</td>
                     </tr>
@@ -1092,7 +1169,7 @@ export default function AdminDashboard({
                 <label className="block">
                   <span className="mb-1.5 block font-head text-xs uppercase tracking-wider text-bone-dim">Категория *</span>
                   <select name="category" defaultValue={editingProduct?.category} className="input">
-                    {categories.map((c) => (
+                    {sortedCategories.map((c) => (
                       <option key={c.slug} value={c.slug}>
                         {c.name}
                       </option>

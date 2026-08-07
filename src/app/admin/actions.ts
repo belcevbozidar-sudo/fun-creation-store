@@ -391,6 +391,25 @@ export async function deleteCategoryAction(id: string) {
   return { success: true };
 }
 
+export async function updateCategoriesOrderAction(orderedIds: string[]) {
+  if (!(await checkAdminAuth())) throw new Error("Unauthorized");
+
+  try {
+    for (let i = 0; i < orderedIds.length; i++) {
+      const id = orderedIds[i];
+      await convexClient.mutation(api.categories.updateOrder, {
+        id: id as Id<"categories">,
+        orderIndex: i,
+      });
+    }
+    revalidateSite();
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error updating category order:", err);
+    return { success: false, error: "Грешка при преподреждане." };
+  }
+}
+
 /* =========================================================================
    ORDER AND MESSAGE ACTIONS
    ========================================================================= */

@@ -1,14 +1,16 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-// Get all non-deleted categories
+// Get all non-deleted categories, sorted by orderIndex
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db
+    const categories = await ctx.db
       .query("categories")
       .filter((q) => q.or(q.eq(q.field("deleted"), false), q.eq(q.field("deleted"), undefined)))
       .collect();
+
+    return categories.sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
   },
 });
 
@@ -38,9 +40,11 @@ export const add = mutation({
     customOrderLabel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const existing = await ctx.db.query("categories").collect();
     return await ctx.db.insert("categories", {
       ...args,
       deleted: false,
+      orderIndex: existing.length,
     });
   },
 });
@@ -68,5 +72,16 @@ export const softDelete = mutation({
   args: { id: v.id("categories") },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.id, { deleted: true });
+  },
+});
+
+// Update only the orderIndex of a category
+export const updateOrder = mutation({
+  args: {
+    id: v.id("categories"),
+    orderIndex: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { orderIndex: args.orderIndex });
   },
 });
